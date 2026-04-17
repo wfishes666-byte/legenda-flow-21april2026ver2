@@ -1,334 +1,701 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import AppLayout from '@/components/AppLayout';
-import OutletSelector from '@/components/OutletSelector';
 import { useOutlets } from '@/hooks/useOutlets';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Trash2, Send, Download, FileText } from 'lucide-react';
+import { Plus, Trash2, Save, Camera, X, FileSpreadsheet, Printer, FileText, Image as ImageIcon, Eraser, History, FolderOpen } from 'lucide-react';
 import { format } from 'date-fns';
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
+import * as XLSX from 'xlsx';
 
 interface ExpenseRow {
+  id: string;
   description: string;
-  amount: string;
+  category: string;
+  unit_price: number;
+  qty: number;
+  receipt_url: string | null;
 }
 
 interface ReportRecord {
   id: string;
   report_date: string;
   outlet_id: string | null;
-  starting_cash: number;
-  daily_offline_income: number;
-  online_delivery_sales: number;
-  ending_physical_cash: number;
-  ending_qris_cash: number;
+  reporter_name: string | null;
+  shift: string | null;
+  starting_cash: number | null;
+  dine_in_omzet: number | null;
+  daily_offline_income: number | null;
+  ending_physical_cash: number | null;
+  ending_qris_cash: number | null;
+  shopeefood_sales: number | null;
+  gofood_sales: number | null;
+  grabfood_sales: number | null;
   notes: string | null;
   created_at: string | null;
 }
+
+const SHIFTS = ['Shift 1', 'Shift 2', 'Full Day'];
+const DEFAULT_CATEGORIES = ['Operasional', 'Bahan Baku', 'Gaji', 'Listrik/Air', 'Lain-lain'];
+
+const formatRp = (v: number) => `Rp ${(v || 0).toLocaleString('id-ID')}`;
+const parseNum = (v: string | number) => {
+  if (typeof v === 'number') return v;
+  const n = Number(String(v || '').replace(/\D/g, ''));
+  return isNaN(n) ? 0 : n;
+};
 
 export default function FinancialReport() {
   const { user, role } = useAuth();
   const { toast } = useToast();
   const { outlets, selectedOutlet, setSelectedOutlet } = useOutlets();
   const [submitting, setSubmitting] = useState(false);
+  const printRef = useRef<HTMLDivElement>(null);
+
   const [form, setForm] = useState({
     report_date: new Date().toISOString().split('T')[0],
-    starting_cash: '',
-    daily_offline_income: '',
-    ending_physical_cash: '',
-    ending_qris_cash: '',
-    online_delivery_sales: '',
+    reporter_name: '',
+    shift: 'Full Day',
+    starting_cash: 0,
+    dine_in_omzet: 0,
+    ending_physical_cash: 0,
+    ending_qris_cash: 0,
+    shopeefood_sales: 0,
+    gofood_sales: 0,
+    grabfood_sales: 0,
     notes: '',
   });
-  const [expenses, setExpenses] = useState<ExpenseRow[]>([{ description: '', amount: '' }]);
+
+  const newExp = (): ExpenseRow => ({
+    id: `${Date.now()}-${Math.random()}`,
+    description: '',
+    category: DEFAULT_CATEGORIES[0],
+    unit_price: 0,
+    qty: 1,
+    receipt_url: null,
+  });
+
+  const [expenses, setExpenses] = useState<ExpenseRow[]>([newExp()]);
+  const [categories, setCategories] = useState<string[]>(DEFAULT_CATEGORIES);
+  const [newCat, setNewCat] = useState('');
   const [reports, setReports] = useState<ReportRecord[]>([]);
+
   const canManage = role === 'management';
   const canViewAll = role === 'management' || role === 'pic';
 
-  const addExpenseRow = () => setExpenses([...expenses, { description: '', amount: '' }]);
-  const removeExpenseRow = (idx: number) => setExpenses(expenses.filter((_, i) => i !== idx));
-  const updateExpense = (idx: number, field: keyof ExpenseRow, value: string) => {
-    const updated = [...expenses];
-    updated[idx][field] = value;
-    setExpenses(updated);
-  };
-
-  const totalExpenses = expenses.reduce((sum, e) => sum + (parseFloat(e.amount) || 0), 0);
+  // Load categories from DB
+  useEffect(() => {
+    if (!user) return;
+    supabase.from('expense_categories').select('name').eq('user_id', user.id).then(({ data }) => {
+      if (data && data.length > 0) {
+        setCategories(data.map((c) => c.name));
+      }
+    });
+  }, [user]);
 
   const fetchReports = async () => {
     if (!canViewAll) return;
-    const { data } = await supabase
-      .from('financial_reports')
-      .select('*')
-      .order('report_date', { ascending: false })
-      .limit(100);
+    const { data } = await supabase.from('financial_reports').select('*').order('report_date', { ascending: false }).limit(100);
     if (data) setReports(data as ReportRecord[]);
   };
 
   useEffect(() => { fetchReports(); }, [role]);
 
+  // Totals
+  const totalExpense = useMemo(() => expenses.reduce((s, e) => s + e.unit_price * e.qty, 0), [expenses]);
+  const totalCash = form.ending_physical_cash + form.ending_qris_cash;
+  const totalIncome = totalCash - form.starting_cash;
+  const grossProfit = form.dine_in_omzet - totalExpense;
+  const gap = totalIncome - grossProfit;
+
+  // Outlet name for preview
+  const branchName = outlets.find((o) => o.id === selectedOutlet)?.name || 'Pilih Cabang';
+
+  const updateExpense = (id: string, field: keyof ExpenseRow, value: any) => {
+    setExpenses((prev) => prev.map((e) => (e.id === id ? { ...e, [field]: value } : e)));
+  };
+
+  const addExpenseRow = () => setExpenses((prev) => [...prev, newExp()]);
+  const removeExpenseRow = (id: string) => setExpenses((prev) => prev.filter((e) => e.id !== id));
+
+  const handleImageUpload = async (id: string, file: File) => {
+    if (!user) return;
+    const ext = file.name.split('.').pop();
+    const path = `${user.id}/${Date.now()}.${ext}`;
+    const { error } = await supabase.storage.from('expense-receipts').upload(path, file, { upsert: false });
+    if (error) {
+      toast({ title: 'Gagal upload', description: error.message, variant: 'destructive' });
+      return;
+    }
+    const { data } = supabase.storage.from('expense-receipts').getPublicUrl(path);
+    updateExpense(id, 'receipt_url', data.publicUrl);
+  };
+
+  const addCategory = async () => {
+    const v = newCat.trim();
+    if (!v || categories.includes(v) || !user) return;
+    setCategories((prev) => [...prev, v]);
+    setNewCat('');
+    await supabase.from('expense_categories').insert({ user_id: user.id, name: v });
+  };
+
+  const removeCategory = async (name: string) => {
+    if (categories.length <= 1 || !user) return;
+    setCategories((prev) => prev.filter((c) => c !== name));
+    await supabase.from('expense_categories').delete().eq('user_id', user.id).eq('name', name);
+  };
+
+  const resetForm = () => {
+    if (!confirm('Bersihkan formulir?')) return;
+    setForm({
+      report_date: new Date().toISOString().split('T')[0],
+      reporter_name: '', shift: 'Full Day',
+      starting_cash: 0, dine_in_omzet: 0, ending_physical_cash: 0, ending_qris_cash: 0,
+      shopeefood_sales: 0, gofood_sales: 0, grabfood_sales: 0, notes: '',
+    });
+    setExpenses([newExp()]);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user || !selectedOutlet) return;
+    if (!user || !selectedOutlet) {
+      toast({ title: 'Pilih cabang dulu', variant: 'destructive' });
+      return;
+    }
     setSubmitting(true);
 
-    const { data: report, error: reportError } = await supabase
-      .from('financial_reports')
-      .insert({
-        user_id: user.id,
-        outlet_id: selectedOutlet,
-        report_date: form.report_date,
-        starting_cash: parseFloat(form.starting_cash) || 0,
-        daily_offline_income: parseFloat(form.daily_offline_income) || 0,
-        ending_physical_cash: parseFloat(form.ending_physical_cash) || 0,
-        ending_qris_cash: parseFloat(form.ending_qris_cash) || 0,
-        online_delivery_sales: parseFloat(form.online_delivery_sales) || 0,
-        notes: form.notes,
-      })
-      .select('id')
-      .single();
+    const { data: report, error } = await supabase.from('financial_reports').insert({
+      user_id: user.id,
+      outlet_id: selectedOutlet,
+      report_date: form.report_date,
+      reporter_name: form.reporter_name,
+      shift: form.shift,
+      starting_cash: form.starting_cash,
+      dine_in_omzet: form.dine_in_omzet,
+      daily_offline_income: form.dine_in_omzet, // legacy compat
+      ending_physical_cash: form.ending_physical_cash,
+      ending_qris_cash: form.ending_qris_cash,
+      shopeefood_sales: form.shopeefood_sales,
+      gofood_sales: form.gofood_sales,
+      grabfood_sales: form.grabfood_sales,
+      online_delivery_sales: form.shopeefood_sales + form.gofood_sales + form.grabfood_sales,
+      notes: form.notes,
+    }).select('id').single();
 
-    if (reportError) {
-      toast({ title: 'Gagal menyimpan', description: reportError.message, variant: 'destructive' });
+    if (error || !report) {
+      toast({ title: 'Gagal simpan', description: error?.message, variant: 'destructive' });
       setSubmitting(false);
       return;
     }
 
-    const validExpenses = expenses.filter((e) => e.description.trim() && parseFloat(e.amount) > 0);
-    if (validExpenses.length > 0 && report) {
+    const valid = expenses.filter((e) => e.description.trim() && e.unit_price > 0);
+    if (valid.length > 0) {
       await supabase.from('expense_items').insert(
-        validExpenses.map((e) => ({
+        valid.map((e) => ({
           report_id: report.id,
           description: e.description,
-          amount: parseFloat(e.amount),
+          category: e.category,
+          unit_price: e.unit_price,
+          qty: e.qty,
+          amount: e.unit_price * e.qty,
+          receipt_url: e.receipt_url,
         }))
       );
     }
 
-    toast({ title: 'Berhasil!', description: 'Laporan keuangan harian tersimpan.' });
-    setForm({ report_date: new Date().toISOString().split('T')[0], starting_cash: '', daily_offline_income: '', ending_physical_cash: '', ending_qris_cash: '', online_delivery_sales: '', notes: '' });
-    setExpenses([{ description: '', amount: '' }]);
+    toast({ title: 'Berhasil!', description: 'Laporan tersimpan ke database.' });
+    resetFormSilent();
     setSubmitting(false);
     fetchReports();
+  };
+
+  const resetFormSilent = () => {
+    setForm({
+      report_date: new Date().toISOString().split('T')[0],
+      reporter_name: '', shift: 'Full Day',
+      starting_cash: 0, dine_in_omzet: 0, ending_physical_cash: 0, ending_qris_cash: 0,
+      shopeefood_sales: 0, gofood_sales: 0, grabfood_sales: 0, notes: '',
+    });
+    setExpenses([newExp()]);
   };
 
   const handleDeleteReport = async (id: string) => {
     await supabase.from('expense_items').delete().eq('report_id', id);
     const { error } = await supabase.from('financial_reports').delete().eq('id', id);
     if (error) {
-      toast({ title: 'Gagal menghapus', description: error.message, variant: 'destructive' });
+      toast({ title: 'Gagal hapus', description: error.message, variant: 'destructive' });
     } else {
-      toast({ title: 'Berhasil', description: 'Laporan dihapus.' });
+      toast({ title: 'Dihapus' });
       fetchReports();
     }
   };
 
-  const handleExportCSV = async () => {
-    const { data } = await supabase.from('financial_reports').select('*').order('report_date', { ascending: false });
-    if (!data || data.length === 0) { toast({ title: 'Tidak ada data', variant: 'destructive' }); return; }
-    const outletMap = new Map(outlets.map(o => [o.id, o.name]));
-    const headers = ['Tanggal', 'Cabang', 'Kas Awal', 'Pendapatan Offline', 'Penjualan Online', 'Kas Fisik Akhir', 'Kas QRIS Akhir', 'Catatan'];
-    const csvRows = [headers.join(',')];
-    data.forEach((r) => {
-      csvRows.push([r.report_date, `"${outletMap.get(r.outlet_id ?? '') || '-'}"`, r.starting_cash, r.daily_offline_income, r.online_delivery_sales, r.ending_physical_cash, r.ending_qris_cash, `"${(r.notes || '').replace(/"/g, '""')}"`].join(','));
-    });
-    const blob = new Blob([csvRows.join('\n')], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `laporan-keuangan-${format(new Date(), 'yyyy-MM-dd')}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
+  const handleExportExcel = () => {
+    const outletName = branchName;
+    const sheet: any[][] = [
+      [`LAPORAN CLOSING ${outletName.toUpperCase()}`],
+      ['Pelapor', form.reporter_name || '-'],
+      ['Tanggal', form.report_date],
+      ['Shift', form.shift],
+      [],
+      ['RINGKASAN KAS'],
+      ['Cash Fisik', form.ending_physical_cash],
+      ['QRIS', form.ending_qris_cash],
+      ['Modal Awal', form.starting_cash],
+      ['Total Didapat', totalIncome],
+      [],
+      ['PENJUALAN'],
+      ['Omzet Dine In', form.dine_in_omzet],
+      [],
+      ['HASIL AKHIR'],
+      ['Total Pengeluaran', totalExpense],
+      ['Laba Kotor', grossProfit],
+      ['Selisih', gap],
+      [],
+      ['ONLINE FOOD'],
+      ['ShopeeFood', form.shopeefood_sales],
+      ['GoFood', form.gofood_sales],
+      ['GrabFood', form.grabfood_sales],
+      [],
+      ['PENGELUARAN'],
+      ['Deskripsi', 'Kategori', 'Harga', 'Qty', 'Total'],
+    ];
+    expenses.forEach((e) => sheet.push([e.description, e.category, e.unit_price, e.qty, e.unit_price * e.qty]));
+
+    const ws = XLSX.utils.aoa_to_sheet(sheet);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Closing');
+    XLSX.writeFile(wb, `Closing_${outletName.replace(/\s/g, '_')}_${form.report_date}.xlsx`);
   };
 
-  const handleExportPDF = async () => {
-    const { data } = await supabase.from('financial_reports').select('*').order('report_date', { ascending: false });
-    if (!data || data.length === 0) { toast({ title: 'Tidak ada data', variant: 'destructive' }); return; }
-    const outletMap = new Map(outlets.map(o => [o.id, o.name]));
-    const doc = new jsPDF();
-    doc.setFontSize(16);
-    doc.text('Laporan Keuangan - Dua Legenda', 14, 20);
-    doc.setFontSize(10);
-    doc.text(`Dicetak: ${format(new Date(), 'dd/MM/yyyy HH:mm')}`, 14, 28);
+  // Print helpers
+  const buildReceiptHtml = () => `
+    <div style="font-family:'Courier Prime',monospace;max-width:380px;margin:auto;padding:15px;color:#000;font-size:13px;">
+      <div style="text-align:center;margin-bottom:8px;">
+        <div style="font-weight:bold;font-size:18px;text-transform:uppercase;">${branchName}</div>
+        <div style="font-size:10px;font-style:italic;">Unit of Dua Legenda Grup</div>
+        <div style="border-top:1px dashed #000;margin:8px 0;"></div>
+        <div style="display:flex;justify-content:space-between;font-size:11px;">
+          <span>Tgl: ${form.report_date}</span><span>${form.shift}</span>
+        </div>
+        <div style="text-align:left;font-size:11px;font-weight:bold;">Kasir: ${form.reporter_name || '-'}</div>
+      </div>
+      <div style="font-weight:bold;text-transform:uppercase;border-bottom:1px solid #000;display:inline-block;margin-bottom:4px;">Penjualan</div>
+      <div style="display:flex;justify-content:space-between;"><span>Omzet (Dine In):</span><span>${formatRp(form.dine_in_omzet)}</span></div>
+      <div style="border-top:1px dashed #000;margin:8px 0;"></div>
+      <div style="font-weight:bold;text-transform:uppercase;border-bottom:1px solid #000;display:inline-block;margin-bottom:4px;">Kas Masuk</div>
+      <div style="display:flex;justify-content:space-between;"><span>Total Cash:</span><span>${formatRp(form.ending_physical_cash)}</span></div>
+      <div style="display:flex;justify-content:space-between;"><span>Total QRIS:</span><span>${formatRp(form.ending_qris_cash)}</span></div>
+      <div style="display:flex;justify-content:space-between;font-style:italic;color:#555;"><span>Modal Awal (-):</span><span>${formatRp(form.starting_cash)}</span></div>
+      <div style="display:flex;justify-content:space-between;font-weight:bold;border-top:1px solid #000;padding-top:4px;"><span>TOTAL DIDAPAT:</span><span>${formatRp(totalIncome)}</span></div>
+      <div style="border-top:1px dashed #000;margin:8px 0;"></div>
+      <div style="font-weight:bold;text-transform:uppercase;margin-bottom:4px;">Pengeluaran:</div>
+      ${expenses.map((e) => `<div style="display:flex;justify-content:space-between;font-size:11px;"><span>${e.qty}x ${e.description || '...'}</span><span>${formatRp(e.unit_price * e.qty)}</span></div>`).join('')}
+      <div style="display:flex;justify-content:space-between;font-weight:bold;margin-top:8px;color:#b91c1c;"><span>TOTAL KELUAR:</span><span>${formatRp(totalExpense)}</span></div>
+      <div style="display:flex;justify-content:space-between;font-weight:bold;font-size:15px;margin-top:8px;"><span>LABA KOTOR:</span><span>${formatRp(grossProfit)}</span></div>
+      <div style="border-top:1px dashed #000;margin:8px 0;"></div>
+      <div style="display:flex;justify-content:space-between;font-weight:bold;color:${gap < 0 ? '#dc2626' : gap > 0 ? '#16a34a' : '#000'};"><span>SELISIH:</span><span>${formatRp(gap)}</span></div>
+      <div style="margin-top:16px;padding-top:8px;border-top:1px dotted #999;">
+        <div style="font-weight:bold;font-size:11px;text-transform:uppercase;color:#ea580c;margin-bottom:4px;">Online Food (Arsip):</div>
+        <div style="display:flex;justify-content:space-between;font-size:11px;"><span>ShopeeFood:</span><span>${formatRp(form.shopeefood_sales)}</span></div>
+        <div style="display:flex;justify-content:space-between;font-size:11px;"><span>GoFood:</span><span>${formatRp(form.gofood_sales)}</span></div>
+        <div style="display:flex;justify-content:space-between;font-size:11px;"><span>GrabFood:</span><span>${formatRp(form.grabfood_sales)}</span></div>
+      </div>
+      <div style="font-size:9px;margin-top:24px;text-align:center;font-style:italic;opacity:0.6;">
+        Dicetak: ${new Date().toLocaleString('id-ID')}<br>Copyright Dua Legenda Grup 2026
+      </div>
+    </div>
+  `;
 
-    autoTable(doc, {
-      startY: 35,
-      head: [['Tanggal', 'Cabang', 'Kas Awal', 'Offline', 'Online', 'Kas Fisik', 'Kas QRIS']],
-      body: data.map((r) => [
-        r.report_date,
-        outletMap.get(r.outlet_id ?? '') || '-',
-        `Rp ${(r.starting_cash ?? 0).toLocaleString('id-ID')}`,
-        `Rp ${(r.daily_offline_income ?? 0).toLocaleString('id-ID')}`,
-        `Rp ${(r.online_delivery_sales ?? 0).toLocaleString('id-ID')}`,
-        `Rp ${(r.ending_physical_cash ?? 0).toLocaleString('id-ID')}`,
-        `Rp ${(r.ending_qris_cash ?? 0).toLocaleString('id-ID')}`,
-      ]),
-      styles: { fontSize: 8 },
-      headStyles: { fillColor: [30, 30, 30] },
-    });
+  const buildA4Html = () => `
+    <div style="padding:32px;background:#fff;font-family:sans-serif;font-size:14px;color:#000;">
+      <div style="display:flex;justify-content:space-between;border-bottom:4px solid #000;padding-bottom:16px;margin-bottom:24px;">
+        <div>
+          <h1 style="font-size:28px;font-weight:900;text-transform:uppercase;margin:0;">Dua Legenda Grup</h1>
+          <p style="font-size:18px;font-weight:bold;color:#666;margin:4px 0 0;">${branchName.toUpperCase()}</p>
+        </div>
+        <div style="text-align:right;text-transform:uppercase;">
+          <h2 style="font-size:20px;font-weight:bold;margin:0;">Laporan Closing</h2>
+          <p style="color:#666;margin:4px 0 0;">${form.report_date} | ${form.shift}</p>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:32px;margin-bottom:24px;">
+        <div>
+          <h3 style="font-size:16px;font-weight:bold;border-bottom:1px solid #ccc;text-transform:uppercase;color:#1e40af;">Ringkasan Kas</h3>
+          <div style="display:flex;justify-content:space-between;margin:4px 0;"><span>Pelapor:</span><b>${form.reporter_name || '-'}</b></div>
+          <div style="display:flex;justify-content:space-between;margin:4px 0;"><span>Cash Fisik:</span><span>${formatRp(form.ending_physical_cash)}</span></div>
+          <div style="display:flex;justify-content:space-between;margin:4px 0;"><span>QRIS:</span><span>${formatRp(form.ending_qris_cash)}</span></div>
+          <div style="display:flex;justify-content:space-between;margin:4px 0;"><span>Modal Awal (-):</span><span>${formatRp(form.starting_cash)}</span></div>
+          <div style="display:flex;justify-content:space-between;border-top:2px solid #000;padding-top:8px;font-weight:900;font-size:20px;"><span>Total Didapat:</span><span>${formatRp(totalIncome)}</span></div>
+        </div>
+        <div>
+          <h3 style="font-size:16px;font-weight:bold;border-bottom:1px solid #ccc;text-transform:uppercase;color:#3730a3;">Penjualan</h3>
+          <div style="display:flex;justify-content:space-between;margin:4px 0;"><span>Omzet Dine In:</span><span>${formatRp(form.dine_in_omzet)}</span></div>
+          <h3 style="font-size:16px;font-weight:bold;border-bottom:1px solid #ccc;text-transform:uppercase;color:#3730a3;margin-top:16px;">Hasil Akhir</h3>
+          <div style="display:flex;justify-content:space-between;margin:4px 0;"><span>Total Pengeluaran:</span><span style="color:#dc2626;">${formatRp(totalExpense)}</span></div>
+          <div style="display:flex;justify-content:space-between;font-size:18px;font-weight:bold;margin-top:8px;"><span>LABA KOTOR:</span><span>${formatRp(grossProfit)}</span></div>
+          <div style="padding:12px;background:#f3f4f6;border-radius:8px;display:flex;justify-content:space-between;font-size:22px;font-weight:900;margin-top:8px;"><span>SELISIH:</span><span>${formatRp(gap)}</span></div>
+        </div>
+      </div>
+      <div style="margin-bottom:24px;padding:16px;background:#fff7ed;border-radius:12px;border:1px solid #fed7aa;">
+        <h3 style="font-size:11px;font-weight:900;color:#9a3412;text-transform:uppercase;text-align:center;margin:0 0 8px;">Data Online Food</h3>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;text-align:center;">
+          <div><p style="font-size:10px;color:#666;text-transform:uppercase;margin:0;">Shopee</p><b>${formatRp(form.shopeefood_sales)}</b></div>
+          <div><p style="font-size:10px;color:#666;text-transform:uppercase;margin:0;">GoFood</p><b>${formatRp(form.gofood_sales)}</b></div>
+          <div><p style="font-size:10px;color:#666;text-transform:uppercase;margin:0;">GrabFood</p><b>${formatRp(form.grabfood_sales)}</b></div>
+        </div>
+      </div>
+      <table style="width:100%;border-collapse:collapse;margin-bottom:32px;font-size:12px;">
+        <thead><tr style="background:#f3f4f6;"><th style="border:1px solid #ccc;padding:8px;text-align:left;">Deskripsi</th><th style="border:1px solid #ccc;padding:8px;">Kategori</th><th style="border:1px solid #ccc;padding:8px;text-align:center;">Qty</th><th style="border:1px solid #ccc;padding:8px;text-align:right;">Subtotal</th></tr></thead>
+        <tbody>${expenses.map((e) => `<tr><td style="border:1px solid #ccc;padding:8px;">${e.description || '-'}</td><td style="border:1px solid #ccc;padding:8px;">${e.category}</td><td style="border:1px solid #ccc;padding:8px;text-align:center;">${e.qty}</td><td style="border:1px solid #ccc;padding:8px;text-align:right;font-weight:bold;">${formatRp(e.unit_price * e.qty)}</td></tr>`).join('')}</tbody>
+      </table>
+      <div style="margin-top:80px;display:flex;justify-content:flex-end;gap:80px;text-align:center;">
+        <div style="width:192px;border-top:1px solid #000;padding-top:8px;font-weight:bold;">${form.reporter_name || '(Pelapor)'}</div>
+        <div style="width:192px;border-top:1px solid #000;padding-top:8px;">( Manager )</div>
+      </div>
+    </div>
+  `;
 
-    doc.save(`laporan-keuangan-${format(new Date(), 'yyyy-MM-dd')}.pdf`);
+  const buildNotaHtml = () => {
+    const withImg = expenses.filter((e) => e.receipt_url);
+    return `
+      <div style="padding:32px;background:#fff;min-height:100vh;">
+        <h1 style="font-size:24px;font-weight:900;text-align:center;border-bottom:2px solid #000;padding-bottom:16px;text-transform:uppercase;">Lampiran Nota Pengeluaran</h1>
+        <div style="display:flex;justify-content:space-between;margin:16px 0;font-size:12px;font-weight:bold;text-transform:uppercase;">
+          <span>Unit: ${branchName}</span><span>Tgl: ${form.report_date}</span>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:24px;">
+          ${withImg.length ? withImg.map((e) => `
+            <div style="border:1px solid #e5e7eb;padding:16px;border-radius:16px;background:#f9fafb;display:flex;flex-direction:column;align-items:center;page-break-inside:avoid;">
+              <img src="${e.receipt_url}" style="max-width:100%;max-height:380px;object-fit:contain;margin-bottom:12px;" />
+              <div style="text-align:center;width:100%;border-top:1px solid #e5e7eb;padding-top:8px;">
+                <p style="font-weight:bold;text-transform:uppercase;font-size:10px;margin:0;">${e.description || 'Nota'}</p>
+                <p style="font-size:9px;color:#999;margin:0;">${formatRp(e.unit_price * e.qty)}</p>
+              </div>
+            </div>
+          `).join('') : '<p style="grid-column:span 2;text-align:center;padding:80px 0;font-style:italic;font-weight:bold;border:2px dashed #e5e7eb;border-radius:16px;">Tidak ada foto nota diunggah.</p>'}
+        </div>
+      </div>
+    `;
   };
 
-  const formatRp = (val: string) => {
-    const num = parseFloat(val) || 0;
-    return `Rp ${num.toLocaleString('id-ID')}`;
-  };
+  const handlePrint = (type: 'receipt' | 'pdf' | 'attachment') => {
+    let content = '';
+    if (type === 'receipt') content = buildReceiptHtml();
+    else if (type === 'pdf') content = buildA4Html() + '<div style="page-break-before:always;"></div>' + buildNotaHtml();
+    else content = buildNotaHtml();
 
-  const outletMap = new Map(outlets.map(o => [o.id, o.name]));
+    const w = window.open('', '_blank', 'width=900,height=700');
+    if (!w) return;
+    w.document.write(`<!doctype html><html><head><title>Cetak Laporan</title><link href="https://fonts.googleapis.com/css2?family=Courier+Prime:wght@400;700&display=swap" rel="stylesheet"><style>@page{margin:1cm;}body{margin:0;}</style></head><body>${content}</body></html>`);
+    w.document.close();
+    setTimeout(() => { w.print(); }, 500);
+  };
 
   return (
     <AppLayout>
-      <div className="max-w-3xl mx-auto space-y-6 pt-12 md:pt-0">
+      <div className="max-w-[1400px] mx-auto space-y-6 pt-12 md:pt-0">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
-            <h1 className="text-2xl md:text-3xl font-bold font-sans">Laporan Keuangan Harian</h1>
-            <p className="text-muted-foreground mt-1">Input data keuangan akhir hari</p>
+            <h1 className="text-2xl md:text-3xl font-bold">Laporan Closing Harian</h1>
+            <p className="text-muted-foreground mt-1">Sistem laporan digital Dua Legenda Grup</p>
           </div>
-          {canManage && (
-            <div className="flex gap-2">
-              <Button variant="outline" size="sm" onClick={handleExportCSV}>
-                <Download className="w-4 h-4 mr-1" /> CSV
-              </Button>
-              <Button variant="outline" size="sm" onClick={handleExportPDF}>
-                <FileText className="w-4 h-4 mr-1" /> PDF
-              </Button>
-            </div>
-          )}
+          <Button variant="outline" size="sm" onClick={resetForm}>
+            <Eraser className="w-4 h-4 mr-1" /> Reset Form
+          </Button>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <Card className="glass-card">
-            <CardHeader><CardTitle className="text-lg">Data Utama</CardTitle></CardHeader>
-            <CardContent className="space-y-4">
-              <OutletSelector outlets={outlets} selectedOutlet={selectedOutlet} onSelect={setSelectedOutlet} />
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Tanggal</Label>
+        <form onSubmit={handleSubmit} className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+          {/* LEFT: Form */}
+          <div className="xl:col-span-2 space-y-6">
+            {/* Data Penjualan */}
+            <Card className="glass-card">
+              <CardHeader>
+                <CardTitle className="text-base flex items-center gap-2">
+                  <FileText className="w-4 h-4 text-primary" /> Data Penjualan
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <div className="col-span-2 space-y-1">
+                  <Label className="text-xs uppercase">Nama Kasir / Pelapor</Label>
+                  <Input value={form.reporter_name} onChange={(e) => setForm({ ...form, reporter_name: e.target.value })} />
+                </div>
+                <div className="col-span-2 space-y-1">
+                  <Label className="text-xs uppercase">Cabang</Label>
+                  <Select value={selectedOutlet} onValueChange={setSelectedOutlet}>
+                    <SelectTrigger><SelectValue placeholder="Pilih cabang" /></SelectTrigger>
+                    <SelectContent>
+                      {outlets.map((o) => (<SelectItem key={o.id} value={o.id}>{o.name}</SelectItem>))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs uppercase">Tanggal</Label>
                   <Input type="date" value={form.report_date} onChange={(e) => setForm({ ...form, report_date: e.target.value })} required />
                 </div>
-                <div className="space-y-2">
-                  <Label>Kas Awal</Label>
-                  <Input type="number" placeholder="0" value={form.starting_cash} onChange={(e) => setForm({ ...form, starting_cash: e.target.value })} required />
+                <div className="space-y-1">
+                  <Label className="text-xs uppercase">Shift</Label>
+                  <Select value={form.shift} onValueChange={(v) => setForm({ ...form, shift: v })}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>{SHIFTS.map((s) => (<SelectItem key={s} value={s}>{s}</SelectItem>))}</SelectContent>
+                  </Select>
                 </div>
-                <div className="space-y-2">
-                  <Label>Pendapatan Offline</Label>
-                  <Input type="number" placeholder="0" value={form.daily_offline_income} onChange={(e) => setForm({ ...form, daily_offline_income: e.target.value })} />
+                <div className="space-y-1">
+                  <Label className="text-xs uppercase">Modal Awal</Label>
+                  <Input inputMode="numeric" placeholder="Rp 0" value={form.starting_cash ? formatRp(form.starting_cash) : ''} onChange={(e) => setForm({ ...form, starting_cash: parseNum(e.target.value) })} className="bg-primary/5 font-bold" />
                 </div>
-                <div className="space-y-2">
-                  <Label>Penjualan Online (Delivery)</Label>
-                  <Input type="number" placeholder="0" value={form.online_delivery_sales} onChange={(e) => setForm({ ...form, online_delivery_sales: e.target.value })} />
+                <div className="space-y-1">
+                  <Label className="text-xs uppercase">Omzet Dine In</Label>
+                  <Input inputMode="numeric" placeholder="Rp 0" value={form.dine_in_omzet ? formatRp(form.dine_in_omzet) : ''} onChange={(e) => setForm({ ...form, dine_in_omzet: parseNum(e.target.value) })} className="font-bold text-primary" />
                 </div>
-                <div className="space-y-2">
-                  <Label>Kas Fisik Akhir</Label>
-                  <Input type="number" placeholder="0" value={form.ending_physical_cash} onChange={(e) => setForm({ ...form, ending_physical_cash: e.target.value })} />
+                <div className="space-y-1">
+                  <Label className="text-xs uppercase text-success">Cash Fisik</Label>
+                  <Input inputMode="numeric" placeholder="Rp 0" value={form.ending_physical_cash ? formatRp(form.ending_physical_cash) : ''} onChange={(e) => setForm({ ...form, ending_physical_cash: parseNum(e.target.value) })} className="font-bold" />
                 </div>
-                <div className="space-y-2">
-                  <Label>Kas QRIS/Digital Akhir</Label>
-                  <Input type="number" placeholder="0" value={form.ending_qris_cash} onChange={(e) => setForm({ ...form, ending_qris_cash: e.target.value })} />
+                <div className="space-y-1">
+                  <Label className="text-xs uppercase text-secondary-foreground">QRIS / Transfer</Label>
+                  <Input inputMode="numeric" placeholder="Rp 0" value={form.ending_qris_cash ? formatRp(form.ending_qris_cash) : ''} onChange={(e) => setForm({ ...form, ending_qris_cash: parseNum(e.target.value) })} className="font-bold" />
                 </div>
-              </div>
-              <div className="space-y-2">
-                <Label>Catatan</Label>
-                <Textarea placeholder="Catatan tambahan..." value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
 
-          <Card className="glass-card">
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="text-lg">Rincian Pengeluaran</CardTitle>
-              <Button type="button" variant="outline" size="sm" onClick={addExpenseRow}>
-                <Plus className="w-4 h-4 mr-1" /> Tambah
-              </Button>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {expenses.map((exp, idx) => (
-                <div key={idx} className="flex gap-3 items-end">
-                  <div className="flex-1 space-y-1">
-                    {idx === 0 && <Label className="text-xs">Keterangan</Label>}
-                    <Input placeholder="Contoh: Beli bahan baku" value={exp.description} onChange={(e) => updateExpense(idx, 'description', e.target.value)} />
+            {/* Online */}
+            <Card className="glass-card">
+              <CardHeader>
+                <CardTitle className="text-base flex items-center gap-2">
+                  <FileSpreadsheet className="w-4 h-4 text-accent" /> Penjualan Online
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                {[
+                  { key: 'shopeefood_sales', label: 'ShopeeFood' },
+                  { key: 'gofood_sales', label: 'GoFood' },
+                  { key: 'grabfood_sales', label: 'GrabFood' },
+                ].map((p) => (
+                  <div key={p.key} className="bg-muted/40 p-3 rounded-xl border text-center space-y-1">
+                    <Label className="text-xs uppercase text-muted-foreground">{p.label}</Label>
+                    <Input
+                      inputMode="numeric"
+                      placeholder="Rp 0"
+                      value={(form as any)[p.key] ? formatRp((form as any)[p.key]) : ''}
+                      onChange={(e) => setForm({ ...form, [p.key]: parseNum(e.target.value) } as any)}
+                      className="border-none bg-transparent text-center text-lg font-black focus-visible:ring-0"
+                    />
                   </div>
-                  <div className="w-32 space-y-1">
-                    {idx === 0 && <Label className="text-xs">Jumlah (Rp)</Label>}
-                    <Input type="number" placeholder="0" value={exp.amount} onChange={(e) => updateExpense(idx, 'amount', e.target.value)} />
-                  </div>
-                  {expenses.length > 1 && (
-                    <Button type="button" variant="ghost" size="icon" onClick={() => removeExpenseRow(idx)}>
-                      <Trash2 className="w-4 h-4 text-destructive" />
-                    </Button>
-                  )}
-                </div>
-              ))}
-              <div className="pt-3 border-t border-border flex justify-between items-center">
-                <span className="text-sm font-medium text-muted-foreground">Total Pengeluaran</span>
-                <span className="font-bold text-lg">{formatRp(totalExpenses.toString())}</span>
-              </div>
-            </CardContent>
-          </Card>
+                ))}
+              </CardContent>
+            </Card>
 
-          <Button type="submit" className="w-full" disabled={submitting}>
-            <Send className="w-4 h-4 mr-2" />
-            {submitting ? 'Menyimpan...' : 'Simpan Laporan'}
-          </Button>
+            {/* Pengeluaran */}
+            <Card className="glass-card">
+              <CardHeader className="flex flex-row items-center justify-between">
+                <CardTitle className="text-base flex items-center gap-2 text-destructive">
+                  <Trash2 className="w-4 h-4" /> Rincian Pengeluaran
+                </CardTitle>
+                <Button type="button" size="sm" onClick={addExpenseRow}>
+                  <Plus className="w-4 h-4 mr-1" /> Tambah Baris
+                </Button>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* Kelola Kategori */}
+                <div className="p-3 bg-secondary/10 rounded-xl border border-secondary/30 space-y-2">
+                  <Label className="text-xs uppercase tracking-wider font-black text-secondary-foreground">Kelola Kategori</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {categories.map((c) => (
+                      <div key={c} className="flex items-center bg-card px-3 py-1 rounded-full text-xs font-bold border">
+                        <span>{c}</span>
+                        <button type="button" onClick={() => removeCategory(c)} className="ml-2 text-destructive hover:text-destructive/70 font-bold">
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="flex gap-2">
+                    <Input placeholder="Nama kategori baru..." value={newCat} onChange={(e) => setNewCat(e.target.value)} className="text-sm" />
+                    <Button type="button" onClick={addCategory} variant="secondary">Simpan</Button>
+                  </div>
+                </div>
+
+                {expenses.map((exp) => (
+                  <div key={exp.id} className="relative p-4 bg-card rounded-xl border shadow-sm">
+                    <div className="grid grid-cols-12 gap-3">
+                      <div className="col-span-12 lg:col-span-4 space-y-1">
+                        <Label className="text-xs uppercase">Deskripsi</Label>
+                        <Textarea placeholder="..." value={exp.description} onChange={(e) => updateExpense(exp.id, 'description', e.target.value)} className="min-h-[42px] resize-none" />
+                      </div>
+                      <div className="col-span-6 lg:col-span-3 space-y-1">
+                        <Label className="text-xs uppercase">Kategori</Label>
+                        <Select value={exp.category} onValueChange={(v) => updateExpense(exp.id, 'category', v)}>
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent>{categories.map((c) => (<SelectItem key={c} value={c}>{c}</SelectItem>))}</SelectContent>
+                        </Select>
+                      </div>
+                      <div className="col-span-6 lg:col-span-2 space-y-1">
+                        <Label className="text-xs uppercase">Harga Satuan</Label>
+                        <Input inputMode="numeric" value={exp.unit_price ? formatRp(exp.unit_price) : ''} onChange={(e) => updateExpense(exp.id, 'unit_price', parseNum(e.target.value))} className="text-right font-medium" />
+                      </div>
+                      <div className="col-span-4 lg:col-span-1 space-y-1">
+                        <Label className="text-xs uppercase text-center block">Qty</Label>
+                        <Input type="number" value={exp.qty} onChange={(e) => updateExpense(exp.id, 'qty', parseFloat(e.target.value) || 0)} className="text-center" />
+                      </div>
+                      <div className="col-span-8 lg:col-span-2 space-y-1">
+                        <Label className="text-xs uppercase">Nota</Label>
+                        <div className="flex items-center gap-2">
+                          <label className="cursor-pointer bg-primary/5 border-2 border-dashed border-primary/30 rounded-xl p-2 flex items-center justify-center hover:bg-primary/10 transition w-full h-[40px]">
+                            <Camera className="w-4 h-4 text-primary" />
+                            <input type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => e.target.files?.[0] && handleImageUpload(exp.id, e.target.files[0])} />
+                          </label>
+                          {exp.receipt_url && <img src={exp.receipt_url} alt="nota" className="w-10 h-10 object-cover rounded border" />}
+                        </div>
+                      </div>
+                    </div>
+                    <button type="button" onClick={() => removeExpenseRow(exp.id)} className="absolute top-2 right-2 bg-destructive text-destructive-foreground w-6 h-6 rounded-full flex items-center justify-center hover:opacity-80">
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+
+            {/* Catatan + Action */}
+            <Card className="glass-card">
+              <CardContent className="space-y-3 pt-6">
+                <div className="space-y-1">
+                  <Label className="text-xs uppercase">Catatan</Label>
+                  <Textarea placeholder="Catatan tambahan..." value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
+                </div>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                  <Button type="submit" disabled={submitting} className="col-span-2 md:col-span-1">
+                    <Save className="w-4 h-4 mr-1" /> {submitting ? 'Menyimpan...' : 'Simpan'}
+                  </Button>
+                  <Button type="button" variant="outline" onClick={handleExportExcel}>
+                    <FileSpreadsheet className="w-4 h-4 mr-1" /> Excel
+                  </Button>
+                  <Button type="button" variant="outline" onClick={() => handlePrint('receipt')}>
+                    <Printer className="w-4 h-4 mr-1" /> Struk
+                  </Button>
+                  <Button type="button" variant="outline" onClick={() => handlePrint('pdf')}>
+                    <FileText className="w-4 h-4 mr-1" /> Arsip+Nota
+                  </Button>
+                </div>
+                <Button type="button" variant="ghost" size="sm" onClick={() => handlePrint('attachment')} className="w-full">
+                  <ImageIcon className="w-4 h-4 mr-1" /> Cetak Hanya Lampiran Nota
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* RIGHT: Live Preview */}
+          <aside className="xl:col-span-1">
+            <div className="sticky top-4 space-y-3">
+              <h2 className="text-center font-bold text-muted-foreground uppercase tracking-widest text-xs">Live Preview Struk</h2>
+              <Card className="bg-card shadow-2xl border" style={{ fontFamily: "'Courier Prime', monospace" }}>
+                <CardContent className="p-4 text-[13px] text-foreground">
+                  <div className="text-center mb-2">
+                    <div className="font-bold text-lg uppercase">{branchName}</div>
+                    <div className="text-[10px] italic">Unit of Dua Legenda Grup</div>
+                    <div className="border-t border-dashed border-foreground my-2" />
+                    <div className="flex justify-between text-[11px]">
+                      <span>Tgl: {form.report_date}</span>
+                      <span className="uppercase">{form.shift}</span>
+                    </div>
+                    <div className="text-left text-[11px] font-bold">Kasir: {form.reporter_name || '-'}</div>
+                  </div>
+                  <div className="font-bold uppercase border-b border-foreground inline-block mb-1">Penjualan</div>
+                  <div className="flex justify-between"><span>Omzet (Dine In):</span><span>{formatRp(form.dine_in_omzet)}</span></div>
+                  <div className="border-t border-dashed border-foreground my-2" />
+                  <div className="font-bold uppercase border-b border-foreground inline-block mb-1">Kas Masuk</div>
+                  <div className="flex justify-between"><span>Total Cash:</span><span>{formatRp(form.ending_physical_cash)}</span></div>
+                  <div className="flex justify-between"><span>Total QRIS:</span><span>{formatRp(form.ending_qris_cash)}</span></div>
+                  <div className="flex justify-between italic text-muted-foreground"><span>Modal Awal (-):</span><span>{formatRp(form.starting_cash)}</span></div>
+                  <div className="flex justify-between font-bold border-t border-foreground pt-1 mt-1"><span>TOTAL DIDAPAT:</span><span>{formatRp(totalIncome)}</span></div>
+                  <div className="border-t border-dashed border-foreground my-2" />
+                  <div className="font-bold uppercase mb-1">Pengeluaran:</div>
+                  {expenses.length > 0 ? expenses.map((e) => (
+                    <div key={e.id} className="flex justify-between text-[11px]">
+                      <span>{e.qty}x {e.description || '...'}</span>
+                      <span>{formatRp(e.unit_price * e.qty)}</span>
+                    </div>
+                  )) : <div className="text-center italic opacity-40 py-2">Belum ada pengeluaran</div>}
+                  <div className="flex justify-between font-bold mt-2 text-destructive"><span>TOTAL KELUAR:</span><span>{formatRp(totalExpense)}</span></div>
+                  <div className="flex justify-between font-bold text-[15px] mt-2"><span>LABA KOTOR:</span><span>{formatRp(grossProfit)}</span></div>
+                  <div className="border-t border-dashed border-foreground my-2" />
+                  <div className={`flex justify-between font-bold ${gap < 0 ? 'text-destructive' : gap > 0 ? 'text-success' : ''}`}>
+                    <span>SELISIH:</span><span>{formatRp(gap)}</span>
+                  </div>
+                  <div className="mt-3 pt-2 border-t border-dotted border-muted-foreground">
+                    <div className="font-bold text-[11px] uppercase mb-1 text-accent">Online Food:</div>
+                    <div className="flex justify-between text-[11px]"><span>ShopeeFood:</span><span>{formatRp(form.shopeefood_sales)}</span></div>
+                    <div className="flex justify-between text-[11px]"><span>GoFood:</span><span>{formatRp(form.gofood_sales)}</span></div>
+                    <div className="flex justify-between text-[11px]"><span>GrabFood:</span><span>{formatRp(form.grabfood_sales)}</span></div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </aside>
         </form>
 
-        {/* Report History for management */}
+        {/* History */}
         {canViewAll && reports.length > 0 && (
           <Card className="glass-card">
-            <CardHeader><CardTitle className="text-lg">Riwayat Laporan</CardTitle></CardHeader>
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2">
+                <History className="w-4 h-4 text-primary" /> Riwayat Laporan
+              </CardTitle>
+            </CardHeader>
             <CardContent className="p-0">
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="border-b border-border text-left text-muted-foreground">
-                      <th className="p-3 font-medium">Tanggal</th>
-                      <th className="p-3 font-medium">Cabang</th>
-                      <th className="p-3 font-medium">Kas Awal</th>
-                      <th className="p-3 font-medium">Offline</th>
-                      <th className="p-3 font-medium">Online</th>
-                      {canManage && <th className="p-3 font-medium">Aksi</th>}
+                    <tr className="border-b text-left text-muted-foreground text-xs uppercase">
+                      <th className="p-3">Tanggal / Shift</th>
+                      <th className="p-3">Cabang</th>
+                      <th className="p-3">Pelapor</th>
+                      <th className="p-3">Total Didapat</th>
+                      {canManage && <th className="p-3 text-center">Aksi</th>}
                     </tr>
                   </thead>
                   <tbody>
-                    {reports.map((r) => (
-                      <tr key={r.id} className="border-b border-border/50 hover:bg-muted/30">
-                        <td className="p-3">{r.report_date}</td>
-                        <td className="p-3">{outletMap.get(r.outlet_id ?? '') || '-'}</td>
-                        <td className="p-3">Rp {(r.starting_cash ?? 0).toLocaleString('id-ID')}</td>
-                        <td className="p-3">Rp {(r.daily_offline_income ?? 0).toLocaleString('id-ID')}</td>
-                        <td className="p-3">Rp {(r.online_delivery_sales ?? 0).toLocaleString('id-ID')}</td>
-                        {canManage && (
-                          <td className="p-3">
-                            <AlertDialog>
-                              <AlertDialogTrigger asChild>
-                                <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive">
-                                  <Trash2 className="w-4 h-4" />
-                                </Button>
-                              </AlertDialogTrigger>
-                              <AlertDialogContent>
-                                <AlertDialogHeader>
-                                  <AlertDialogTitle>Hapus Laporan</AlertDialogTitle>
-                                  <AlertDialogDescription>Yakin ingin menghapus laporan tanggal {r.report_date}?</AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                  <AlertDialogCancel>Batal</AlertDialogCancel>
-                                  <AlertDialogAction onClick={() => handleDeleteReport(r.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Hapus</AlertDialogAction>
-                                </AlertDialogFooter>
-                              </AlertDialogContent>
-                            </AlertDialog>
-                          </td>
-                        )}
-                      </tr>
-                    ))}
+                    {reports.map((r) => {
+                      const inc = (r.ending_physical_cash || 0) + (r.ending_qris_cash || 0) - (r.starting_cash || 0);
+                      const outletName = outlets.find((o) => o.id === r.outlet_id)?.name || '-';
+                      return (
+                        <tr key={r.id} className="border-b hover:bg-muted/30">
+                          <td className="p-3"><div className="font-bold">{r.report_date}</div><div className="text-xs text-muted-foreground">{r.shift}</div></td>
+                          <td className="p-3">{outletName}</td>
+                          <td className="p-3">{r.reporter_name || '-'}</td>
+                          <td className="p-3 font-bold text-primary">{formatRp(inc)}</td>
+                          {canManage && (
+                            <td className="p-3 text-center">
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <Button variant="ghost" size="sm" className="text-destructive">
+                                    <Trash2 className="w-4 h-4" />
+                                  </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>Hapus Laporan</AlertDialogTitle>
+                                    <AlertDialogDescription>Yakin hapus laporan {r.report_date}?</AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>Batal</AlertDialogCancel>
+                                    <AlertDialogAction onClick={() => handleDeleteReport(r.id)} className="bg-destructive text-destructive-foreground">Hapus</AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
+                            </td>
+                          )}
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
