@@ -523,44 +523,54 @@ export default function FinancialReport() {
                   </div>
                 </div>
 
-                {expenses.map((exp) => (
-                  <div key={exp.id} className="relative p-4 bg-card rounded-xl border shadow-sm">
-                    <div className="grid grid-cols-12 gap-3">
-                      <div className="col-span-12 lg:col-span-4 space-y-1">
+                {expenses.map((exp, idx) => {
+                  const subtotal = (exp.unit_price || 0) * (exp.qty || 0);
+                  return (
+                  <div key={exp.id} className="relative p-4 pr-10 bg-card rounded-xl border shadow-sm">
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Item #{idx + 1}</span>
+                      <span className="text-sm font-bold text-primary">{formatRp(subtotal)}</span>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div className="md:col-span-2 space-y-1">
                         <Label className="text-xs uppercase">Deskripsi</Label>
-                        <Textarea placeholder="..." value={exp.description} onChange={(e) => updateExpense(exp.id, 'description', e.target.value)} className="min-h-[42px] resize-none" />
+                        <Textarea placeholder="cth: Beli galon, gas, sayur..." value={exp.description} onChange={(e) => updateExpense(exp.id, 'description', e.target.value)} className="min-h-[60px] resize-y w-full" />
                       </div>
-                      <div className="col-span-6 lg:col-span-3 space-y-1">
+                      <div className="space-y-1">
                         <Label className="text-xs uppercase">Kategori</Label>
                         <Select value={exp.category} onValueChange={(v) => updateExpense(exp.id, 'category', v)}>
-                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
                           <SelectContent>{categories.map((c) => (<SelectItem key={c} value={c}>{c}</SelectItem>))}</SelectContent>
                         </Select>
                       </div>
-                      <div className="col-span-6 lg:col-span-2 space-y-1">
-                        <Label className="text-xs uppercase">Harga Satuan</Label>
-                        <Input inputMode="numeric" value={exp.unit_price ? formatRp(exp.unit_price) : ''} onChange={(e) => updateExpense(exp.id, 'unit_price', parseNum(e.target.value))} className="text-right font-medium" />
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-1">
+                          <Label className="text-xs uppercase">Harga Satuan</Label>
+                          <Input inputMode="numeric" placeholder="0" value={exp.unit_price ? formatRp(exp.unit_price) : ''} onChange={(e) => updateExpense(exp.id, 'unit_price', parseNum(e.target.value))} className="text-right font-medium w-full" />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs uppercase">Qty</Label>
+                          <Input type="number" min="0" value={exp.qty} onChange={(e) => updateExpense(exp.id, 'qty', parseFloat(e.target.value) || 0)} className="text-center w-full" />
+                        </div>
                       </div>
-                      <div className="col-span-4 lg:col-span-1 space-y-1">
-                        <Label className="text-xs uppercase text-center block">Qty</Label>
-                        <Input type="number" value={exp.qty} onChange={(e) => updateExpense(exp.id, 'qty', parseFloat(e.target.value) || 0)} className="text-center" />
-                      </div>
-                      <div className="col-span-8 lg:col-span-2 space-y-1">
-                        <Label className="text-xs uppercase">Nota</Label>
-                        <div className="flex items-center gap-2">
-                          <label className="cursor-pointer bg-primary/5 border-2 border-dashed border-primary/30 rounded-xl p-2 flex items-center justify-center hover:bg-primary/10 transition w-full h-[40px]">
-                            <Camera className="w-4 h-4 text-primary" />
+                      <div className="md:col-span-2 space-y-1">
+                        <Label className="text-xs uppercase">Nota / Bukti</Label>
+                        <div className="flex items-center gap-3">
+                          <label className="cursor-pointer bg-primary/5 border-2 border-dashed border-primary/30 rounded-xl px-4 py-2 flex items-center gap-2 hover:bg-primary/10 transition flex-1 min-h-[44px]">
+                            <Camera className="w-4 h-4 text-primary shrink-0" />
+                            <span className="text-xs text-muted-foreground truncate">{exp.receipt_url ? 'Ganti foto nota' : 'Upload / Foto nota'}</span>
                             <input type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => e.target.files?.[0] && handleImageUpload(exp.id, e.target.files[0])} />
                           </label>
-                          {exp.receipt_url && <img src={exp.receipt_url} alt="nota" className="w-10 h-10 object-cover rounded border" />}
+                          {exp.receipt_url && <img src={exp.receipt_url} alt="nota" className="w-11 h-11 object-cover rounded border shrink-0" />}
                         </div>
                       </div>
                     </div>
-                    <button type="button" onClick={() => removeExpenseRow(exp.id)} className="absolute top-2 right-2 bg-destructive text-destructive-foreground w-6 h-6 rounded-full flex items-center justify-center hover:opacity-80">
-                      <X className="w-3 h-3" />
+                    <button type="button" onClick={() => removeExpenseRow(exp.id)} className="absolute top-2 right-2 bg-destructive text-destructive-foreground w-7 h-7 rounded-full flex items-center justify-center hover:opacity-80">
+                      <X className="w-3.5 h-3.5" />
                     </button>
                   </div>
-                ))}
+                  );
+                })}
               </CardContent>
             </Card>
 
