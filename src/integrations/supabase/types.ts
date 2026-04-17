@@ -181,27 +181,60 @@ export type Database = {
         }
         Relationships: []
       }
+      expense_categories: {
+        Row: {
+          created_at: string | null
+          id: string
+          name: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          name: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          name?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       expense_items: {
         Row: {
           amount: number
+          category: string | null
           created_at: string | null
           description: string
           id: string
+          qty: number | null
+          receipt_url: string | null
           report_id: string
+          unit_price: number | null
         }
         Insert: {
           amount?: number
+          category?: string | null
           created_at?: string | null
           description: string
           id?: string
+          qty?: number | null
+          receipt_url?: string | null
           report_id: string
+          unit_price?: number | null
         }
         Update: {
           amount?: number
+          category?: string | null
           created_at?: string | null
           description?: string
           id?: string
+          qty?: number | null
+          receipt_url?: string | null
           report_id?: string
+          unit_price?: number | null
         }
         Relationships: [
           {
@@ -217,13 +250,19 @@ export type Database = {
         Row: {
           created_at: string | null
           daily_offline_income: number | null
+          dine_in_omzet: number | null
           ending_physical_cash: number | null
           ending_qris_cash: number | null
+          gofood_sales: number | null
+          grabfood_sales: number | null
           id: string
           notes: string | null
           online_delivery_sales: number | null
           outlet_id: string | null
           report_date: string
+          reporter_name: string | null
+          shift: string | null
+          shopeefood_sales: number | null
           starting_cash: number | null
           updated_at: string | null
           user_id: string
@@ -231,13 +270,19 @@ export type Database = {
         Insert: {
           created_at?: string | null
           daily_offline_income?: number | null
+          dine_in_omzet?: number | null
           ending_physical_cash?: number | null
           ending_qris_cash?: number | null
+          gofood_sales?: number | null
+          grabfood_sales?: number | null
           id?: string
           notes?: string | null
           online_delivery_sales?: number | null
           outlet_id?: string | null
           report_date?: string
+          reporter_name?: string | null
+          shift?: string | null
+          shopeefood_sales?: number | null
           starting_cash?: number | null
           updated_at?: string | null
           user_id: string
@@ -245,13 +290,19 @@ export type Database = {
         Update: {
           created_at?: string | null
           daily_offline_income?: number | null
+          dine_in_omzet?: number | null
           ending_physical_cash?: number | null
           ending_qris_cash?: number | null
+          gofood_sales?: number | null
+          grabfood_sales?: number | null
           id?: string
           notes?: string | null
           online_delivery_sales?: number | null
           outlet_id?: string | null
           report_date?: string
+          reporter_name?: string | null
+          shift?: string | null
+          shopeefood_sales?: number | null
           starting_cash?: number | null
           updated_at?: string | null
           user_id?: string
