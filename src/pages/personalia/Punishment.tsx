@@ -80,13 +80,21 @@ export default function PunishmentPage() {
   };
 
   const profileMap = new Map(profiles.map((p: any) => [p.user_id, p.full_name]));
+  const profileFullMap = new Map(profiles.map((p: any) => [p.user_id, p]));
 
   return (
     <AppLayout>
       <div className="max-w-4xl mx-auto space-y-6 pt-12 md:pt-0">
-        <h1 className="text-2xl md:text-3xl font-bold font-sans flex items-center gap-3">
-          <AlertTriangle className="w-7 h-7" /> Punishment & SP
-        </h1>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <h1 className="text-2xl md:text-3xl font-bold font-sans flex items-center gap-3">
+            <AlertTriangle className="w-7 h-7" /> Punishment & SP
+          </h1>
+          {canManage && (
+            <Button onClick={() => openGenerator()} variant="outline">
+              <FileText className="w-4 h-4 mr-2" /> Generator SP
+            </Button>
+          )}
+        </div>
 
         {canManage && (
           <Card className="glass-card">
