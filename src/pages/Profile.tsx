@@ -246,6 +246,88 @@ export default function ProfilePage() {
             </form>
           </DialogContent>
         </Dialog>
+
+          {/* Cashbon Request */}
+          <Dialog open={cashbonOpen} onOpenChange={setCashbonOpen}>
+            <DialogTrigger asChild>
+              <Button variant="secondary" className="w-full sm:w-auto gap-2">
+                <Banknote className="w-4 h-4" /> Pengajuan Cashbon
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle className="font-heading">Pengajuan Cashbon</DialogTitle>
+              </DialogHeader>
+              <form onSubmit={handleCashbonSubmit} className="space-y-4">
+                <div className="space-y-2">
+                  <Label>Jumlah (Rp)</Label>
+                  <Input
+                    type="number"
+                    min="1"
+                    step="1000"
+                    placeholder="0"
+                    value={cashbonForm.amount}
+                    onChange={(e) => setCashbonForm({ ...cashbonForm, amount: e.target.value })}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Catatan / Keperluan</Label>
+                  <Textarea
+                    value={cashbonForm.notes}
+                    onChange={(e) => setCashbonForm({ ...cashbonForm, notes: e.target.value })}
+                    placeholder="Jelaskan keperluan cashbon..."
+                  />
+                </div>
+                <Button type="submit" className="w-full" disabled={cashbonSubmitting}>
+                  {cashbonSubmitting ? 'Mengirim...' : 'Kirim Pengajuan'}
+                </Button>
+              </form>
+            </DialogContent>
+          </Dialog>
+        </div>
+
+        {/* Cashbon History */}
+        <Card className="glass-card">
+          <CardHeader>
+            <CardTitle className="font-heading text-lg flex items-center gap-2">
+              <Banknote className="w-5 h-5 text-primary" /> Riwayat Cashbon Saya
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border text-left text-muted-foreground">
+                    <th className="p-3 font-medium">Tanggal</th>
+                    <th className="p-3 font-medium">Jumlah</th>
+                    <th className="p-3 font-medium">Status</th>
+                    <th className="p-3 font-medium">Catatan</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {cashbonRecords.map((r) => (
+                    <tr key={r.id} className="border-b border-border/50 hover:bg-muted/30">
+                      <td className="p-3">{format(new Date(r.request_date), 'dd MMM yyyy')}</td>
+                      <td className="p-3 font-medium">Rp {(r.amount || 0).toLocaleString('id-ID')}</td>
+                      <td className="p-3">
+                        <StatusBadge variant={cashbonStatusVariant(r.status)}>{r.status}</StatusBadge>
+                      </td>
+                      <td className="p-3 text-xs text-muted-foreground">{r.notes || '-'}</td>
+                    </tr>
+                  ))}
+                  {cashbonRecords.length === 0 && (
+                    <tr>
+                      <td colSpan={4} className="p-8 text-center text-muted-foreground">
+                        Belum ada pengajuan cashbon.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </AppLayout>
   );
