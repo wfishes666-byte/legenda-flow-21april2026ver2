@@ -6,6 +6,8 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Printer, RotateCcw, FileText } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
 
 interface SPGeneratorDialogProps {
   open: boolean;
@@ -15,6 +17,8 @@ interface SPGeneratorDialogProps {
   defaultPoints?: number;
   defaultReason?: string;
   defaultSpStatus?: string; // 'SP-1' | 'SP-2' | 'SP-3' | 'Non-SP'
+  userId?: string; // employee user_id for history logging
+  onPrinted?: () => void;
 }
 
 const DEFAULT_TEXT = {
