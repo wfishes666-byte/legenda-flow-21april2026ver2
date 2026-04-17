@@ -131,7 +131,7 @@ export default function Login() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
-              <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" required minLength={6} />
+              <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" required minLength={1} />
             </div>
             <Button type="submit" className="w-full h-11" disabled={loading}>
               {loading ? <><Loader2 className="w-4 h-4 animate-spin" /> Memproses...</> : isSignUp ? 'Daftar' : 'Masuk'}

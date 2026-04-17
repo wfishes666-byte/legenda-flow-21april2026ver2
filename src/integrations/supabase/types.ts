@@ -14,6 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
+      activity_logs: {
+        Row: {
+          action: string
+          created_at: string
+          description: string
+          id: string
+          metadata: Json | null
+          module: string
+          user_id: string
+          user_name: string
+          user_role: string
+        }
+        Insert: {
+          action?: string
+          created_at?: string
+          description?: string
+          id?: string
+          metadata?: Json | null
+          module?: string
+          user_id: string
+          user_name?: string
+          user_role?: string
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          description?: string
+          id?: string
+          metadata?: Json | null
+          module?: string
+          user_id?: string
+          user_name?: string
+          user_role?: string
+        }
+        Relationships: []
+      }
       attendance: {
         Row: {
           attendance_date: string
