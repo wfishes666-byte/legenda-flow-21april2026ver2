@@ -10,7 +10,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
-import { AlertTriangle, Plus } from 'lucide-react';
+import { AlertTriangle, Plus, FileText } from 'lucide-react';
+import SPGeneratorDialog from '@/components/SPGeneratorDialog';
 
 export default function PunishmentPage() {
   const { user, role } = useAuth();
@@ -20,6 +21,21 @@ export default function PunishmentPage() {
   const [profiles, setProfiles] = useState<any[]>([]);
   const [form, setForm] = useState({ user_id: '', points_added: '', new_sp_status: 'Non-SP', reason: '' });
   const [submitting, setSubmitting] = useState(false);
+  const [spOpen, setSpOpen] = useState(false);
+  const [spDefaults, setSpDefaults] = useState<{ name: string; position: string; points: number; reason: string; status: string }>({
+    name: '', position: '', points: 0, reason: '', status: 'SP-1',
+  });
+
+  const openGenerator = (overrides?: Partial<typeof spDefaults>) => {
+    setSpDefaults({
+      name: overrides?.name ?? '',
+      position: overrides?.position ?? '',
+      points: overrides?.points ?? 0,
+      reason: overrides?.reason ?? '',
+      status: overrides?.status ?? 'SP-1',
+    });
+    setSpOpen(true);
+  };
 
   const fetchData = async () => {
     const { data } = await supabase.from('punishments').select('*').order('issued_date', { ascending: false }).limit(200);
