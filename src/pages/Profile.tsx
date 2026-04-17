@@ -199,11 +199,13 @@ export default function ProfilePage() {
           </CardContent>
         </Card>
 
-        {/* Leave Request */}
-        <Dialog open={leaveOpen} onOpenChange={setLeaveOpen}>
-          <DialogTrigger asChild>
-            <Button className="w-full md:w-auto">Pengajuan Cuti</Button>
-          </DialogTrigger>
+        {/* Action Buttons */}
+        <div className="flex flex-col sm:flex-row gap-3">
+          {/* Leave Request */}
+          <Dialog open={leaveOpen} onOpenChange={setLeaveOpen}>
+            <DialogTrigger asChild>
+              <Button className="w-full sm:w-auto">Pengajuan Cuti</Button>
+            </DialogTrigger>
           <DialogContent>
             <DialogHeader>
               <DialogTitle className="font-heading">Pengajuan Cuti</DialogTitle>
