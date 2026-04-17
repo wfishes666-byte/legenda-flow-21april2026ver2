@@ -34,13 +34,22 @@ export default function CashbonPage() {
 
   useEffect(() => { fetchData(); }, [role]);
 
+  // Format number to Rp x.xxx.xxx (rounded, integer only)
+  const rawAmount = parseInt(amount.replace(/\D/g, '')) || 0;
+  const displayAmount = rawAmount > 0 ? `Rp ${rawAmount.toLocaleString('id-ID')}` : '';
+
+  const handleAmountChange = (val: string) => {
+    const digits = val.replace(/\D/g, '');
+    setAmount(digits);
+  };
+
   const handleRequest = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
     setSubmitting(true);
     const { error } = await supabase.from('cashbon').insert({
       user_id: user.id,
-      amount: parseFloat(amount) || 0,
+      amount: rawAmount,
       notes,
     });
     if (error) {
@@ -84,8 +93,15 @@ export default function CashbonPage() {
           <CardContent>
             <form onSubmit={handleRequest} className="flex flex-col sm:flex-row gap-4">
               <div className="flex-1 space-y-2">
-                <Label>Jumlah (Rp)</Label>
-                <Input type="number" placeholder="0" value={amount} onChange={(e) => setAmount(e.target.value)} required />
+                <Label>Jumlah</Label>
+                <Input
+                  type="text"
+                  inputMode="numeric"
+                  placeholder="Rp 0"
+                  value={displayAmount}
+                  onChange={(e) => handleAmountChange(e.target.value)}
+                  required
+                />
               </div>
               <div className="flex-1 space-y-2">
                 <Label>Catatan</Label>

@@ -27,7 +27,12 @@ interface StaffProfile {
   employment_status: string;
   contract_end_date: string | null;
   outlet_id: string | null;
+  base_salary: number;
+  transport_allowance: number;
+  meal_allowance: number;
 }
+
+const formatRupiah = (n: number) => `Rp ${Math.round(n || 0).toLocaleString('id-ID')}`;
 
 export default function StaffManagement() {
   const { toast } = useToast();
@@ -59,6 +64,9 @@ export default function StaffManagement() {
         employment_status: editProfile.employment_status,
         contract_end_date: editProfile.contract_end_date,
         outlet_id: editProfile.outlet_id,
+        base_salary: Math.round(editProfile.base_salary || 0),
+        transport_allowance: Math.round(editProfile.transport_allowance || 0),
+        meal_allowance: Math.round(editProfile.meal_allowance || 0),
       })
       .eq('id', editProfile.id);
 
@@ -227,6 +235,49 @@ export default function StaffManagement() {
                     </SelectContent>
                   </Select>
                 </div>
+
+                {/* Komponen Gaji - terhubung ke Payroll */}
+                <div className="border-t border-border pt-4 space-y-3">
+                  <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    Komponen Gaji (auto-isi ke Payroll)
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div className="space-y-2">
+                      <Label>Gaji Pokok</Label>
+                      <Input
+                        type="number"
+                        min={0}
+                        step={1000}
+                        value={editProfile.base_salary ?? 0}
+                        onChange={(e) => setEditProfile({ ...editProfile, base_salary: parseInt(e.target.value) || 0 })}
+                      />
+                      <p className="text-[11px] text-muted-foreground">{formatRupiah(editProfile.base_salary)}</p>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Tunj. Transport</Label>
+                      <Input
+                        type="number"
+                        min={0}
+                        step={1000}
+                        value={editProfile.transport_allowance ?? 0}
+                        onChange={(e) => setEditProfile({ ...editProfile, transport_allowance: parseInt(e.target.value) || 0 })}
+                      />
+                      <p className="text-[11px] text-muted-foreground">{formatRupiah(editProfile.transport_allowance)}</p>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Tunj. Makan</Label>
+                      <Input
+                        type="number"
+                        min={0}
+                        step={1000}
+                        value={editProfile.meal_allowance ?? 0}
+                        onChange={(e) => setEditProfile({ ...editProfile, meal_allowance: parseInt(e.target.value) || 0 })}
+                      />
+                      <p className="text-[11px] text-muted-foreground">{formatRupiah(editProfile.meal_allowance)}</p>
+                    </div>
+                  </div>
+                </div>
+
                 <Button className="w-full" onClick={handleSave} disabled={saving}>
                   {saving ? 'Menyimpan...' : 'Simpan Perubahan'}
                 </Button>

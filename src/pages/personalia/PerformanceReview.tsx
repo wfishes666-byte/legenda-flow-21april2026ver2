@@ -72,14 +72,22 @@ export default function PerformanceReviewPage() {
     })();
   }, [user?.id]);
 
-  // Filter employees by outlet + search
+  // Build set of user_ids already reviewed for the current period
+  const reviewedForPeriod = useMemo(() => {
+    if (!month || !year) return new Set<string>();
+    const period = `${month} ${year}`;
+    return new Set(records.filter((r: any) => r.review_period === period).map((r: any) => r.user_id));
+  }, [records, month, year]);
+
+  // Filter employees by outlet + search + exclude already-reviewed for this period
   const filteredProfiles = useMemo(() => {
     return profiles.filter((p) => {
       if (outletId !== ALL && p.outlet_id !== outletId) return false;
       if (search.trim() && !p.full_name.toLowerCase().includes(search.toLowerCase())) return false;
+      if (reviewedForPeriod.has(p.user_id)) return false;
       return true;
     });
-  }, [profiles, outletId, search]);
+  }, [profiles, outletId, search, reviewedForPeriod]);
 
   // Reset employee if no longer in filtered list
   useEffect(() => {
@@ -246,10 +254,12 @@ export default function PerformanceReviewPage() {
                     />
                   </div>
                   <Select value={employeeId} onValueChange={setEmployeeId}>
-                    <SelectTrigger><SelectValue placeholder="-- Pilih --" /></SelectTrigger>
+                    <SelectTrigger><SelectValue placeholder={month && year ? '-- Pilih --' : 'Pilih bulan & tahun dahulu'} /></SelectTrigger>
                     <SelectContent>
                       {filteredProfiles.length === 0 && (
-                        <div className="px-3 py-2 text-xs text-muted-foreground">Tidak ada karyawan.</div>
+                        <div className="px-3 py-2 text-xs text-muted-foreground">
+                          {month && year ? 'Semua karyawan sudah dinilai untuk periode ini.' : 'Tidak ada karyawan.'}
+                        </div>
                       )}
                       {filteredProfiles.map((p) => (
                         <SelectItem key={p.user_id} value={p.user_id}>
@@ -258,6 +268,11 @@ export default function PerformanceReviewPage() {
                       ))}
                     </SelectContent>
                   </Select>
+                  {month && year && (
+                    <p className="text-[11px] text-muted-foreground">
+                      Karyawan yang sudah dinilai untuk <strong>{month} {year}</strong> otomatis disembunyikan.
+                    </p>
+                  )}
                 </div>
 
                 {/* Penilai */}

@@ -29,11 +29,26 @@ export default function PayrollPage() {
   const fetchData = async () => {
     const { data } = await supabase.from('payroll').select('*').order('period_year', { ascending: false }).order('period_month', { ascending: false }).limit(200);
     if (data) setRecords(data);
-    const { data: p } = await supabase.from('profiles').select('user_id, full_name').order('full_name');
+    const { data: p } = await supabase
+      .from('profiles')
+      .select('user_id, full_name, base_salary, transport_allowance, meal_allowance')
+      .order('full_name');
     if (p) setProfiles(p);
   };
 
   useEffect(() => { fetchData(); }, [role]);
+
+  // Auto-fill salary components when employee is selected
+  const handleSelectEmployee = (userId: string) => {
+    const prof: any = profiles.find((p: any) => p.user_id === userId);
+    setForm({
+      ...form,
+      user_id: userId,
+      base_salary: prof?.base_salary ? String(prof.base_salary) : form.base_salary,
+      transport_allowance: prof?.transport_allowance ? String(prof.transport_allowance) : form.transport_allowance,
+      meal_allowance: prof?.meal_allowance ? String(prof.meal_allowance) : form.meal_allowance,
+    });
+  };
 
   const calcNet = () => {
     const base = parseFloat(form.base_salary) || 0;
@@ -123,7 +138,7 @@ export default function PayrollPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <div className="space-y-2">
                     <Label>Karyawan</Label>
-                    <Select value={form.user_id} onValueChange={(v) => setForm({ ...form, user_id: v })}>
+                    <Select value={form.user_id} onValueChange={handleSelectEmployee}>
                       <SelectTrigger><SelectValue placeholder="Pilih" /></SelectTrigger>
                       <SelectContent>
                         {profiles.map((p: any) => (
