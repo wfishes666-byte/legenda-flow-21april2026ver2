@@ -1,0 +1,78 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=Playfair+Display:wght@600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 40 20% 97%;
+    --foreground: 160 30% 10%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 160 30% 10%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 160 30% 10%;
+
+    --primary: 160 40% 22%;
+    --primary-foreground: 40 20% 97%;
+
+    --secondary: 38 60% 55%;
+    --secondary-foreground: 160 30% 10%;
+
+    --muted: 40 15% 92%;
+    --muted-foreground: 160 10% 45%;
+
+    --accent: 38 70% 50%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+
+    --success: 142 60% 40%;
+    --success-foreground: 0 0% 100%;
+
+    --warning: 38 92% 50%;
+    --warning-foreground: 160 30% 10%;
+
+    --border: 40 15% 88%;
+    --input: 40 15% 88%;
+    --ring: 160 40% 22%;
+
+    --radius: 0.75rem;
+
+    --sidebar-background: 160 30% 12%;
+    --sidebar-foreground: 40 20% 90%;
+    --sidebar-primary: 38 60% 55%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 160 25% 18%;
+    --sidebar-accent-foreground: 40 20% 90%;
+    --sidebar-border: 160 20% 20%;
+    --sidebar-ring: 38 60% 55%;
+
+    --font-heading: 'Playfair Display', serif;
+    --font-body: 'DM Sans', sans-serif;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: var(--font-body);
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-heading);
+  }
+}
+
+@layer utilities {
+  .glass-card {
+    @apply bg-card/80 backdrop-blur-sm border border-border/50 shadow-sm;
+  }
+}
