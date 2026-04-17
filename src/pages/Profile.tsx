@@ -10,7 +10,8 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
-import { CalendarDays, Phone, MapPin, Briefcase, AlertTriangle, FileWarning, Clock } from 'lucide-react';
+import { CalendarDays, Phone, MapPin, Briefcase, AlertTriangle, FileWarning, Clock, Banknote } from 'lucide-react';
+import { Badge as StatusBadge } from '@/components/ui/badge';
 import { format } from 'date-fns';
 
 interface Profile {
