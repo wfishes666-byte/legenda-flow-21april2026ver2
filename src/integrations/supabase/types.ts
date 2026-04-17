@@ -660,6 +660,42 @@ export type Database = {
         }
         Relationships: []
       }
+      sp_history: {
+        Row: {
+          created_at: string
+          id: string
+          issued_by: string | null
+          issued_date: string
+          printed_at: string | null
+          reason: string
+          sp_level: string
+          total_points: number
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          issued_by?: string | null
+          issued_date?: string
+          printed_at?: string | null
+          reason?: string
+          sp_level: string
+          total_points?: number
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          issued_by?: string | null
+          issued_date?: string
+          printed_at?: string | null
+          reason?: string
+          sp_level?: string
+          total_points?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           id: string

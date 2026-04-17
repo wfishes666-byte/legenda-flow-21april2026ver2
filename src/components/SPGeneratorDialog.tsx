@@ -6,6 +6,8 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Printer, RotateCcw, FileText } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
 
 interface SPGeneratorDialogProps {
   open: boolean;
@@ -15,6 +17,8 @@ interface SPGeneratorDialogProps {
   defaultPoints?: number;
   defaultReason?: string;
   defaultSpStatus?: string; // 'SP-1' | 'SP-2' | 'SP-3' | 'Non-SP'
+  userId?: string; // employee user_id for history logging
+  onPrinted?: () => void;
 }
 
 const DEFAULT_TEXT = {
@@ -29,7 +33,9 @@ const DEFAULT_PAPER = { width: 210, height: 297, mt: 25.4, mb: 25.4, ml: 30, mr:
 export default function SPGeneratorDialog({
   open, onOpenChange,
   defaultName = '', defaultPosition = '', defaultPoints = 0, defaultReason = '', defaultSpStatus,
+  userId, onPrinted,
 }: SPGeneratorDialogProps) {
+  const { user } = useAuth();
   const [nama, setNama] = useState(defaultName);
   const [jabatan, setJabatan] = useState(defaultPosition);
   const [poin, setPoin] = useState<number>(defaultPoints);
@@ -134,6 +140,20 @@ export default function SPGeneratorDialog({
     if (!w) return;
     w.document.write(html);
     w.document.close();
+
+    // Log SP issuance to history (best-effort)
+    if (userId) {
+      supabase.from('sp_history').insert({
+        user_id: userId,
+        sp_level: `SP-${spLevel}`,
+        total_points: poin,
+        reason: penjabaran || '',
+        issued_by: user?.id ?? null,
+        printed_at: new Date().toISOString(),
+      }).then(({ error }) => {
+        if (!error) onPrinted?.();
+      });
+    }
   };
 
   const resetA4 = () => setPaper(DEFAULT_PAPER);
