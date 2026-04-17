@@ -26,6 +26,14 @@ interface Profile {
   contract_end_date: string | null;
 }
 
+interface CashbonRecord {
+  id: string;
+  request_date: string;
+  amount: number;
+  status: string;
+  notes: string | null;
+}
+
 export default function ProfilePage() {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -33,6 +41,22 @@ export default function ProfilePage() {
   const [leaveOpen, setLeaveOpen] = useState(false);
   const [leaveForm, setLeaveForm] = useState({ start_date: '', end_date: '', reason: '' });
   const [submitting, setSubmitting] = useState(false);
+
+  const [cashbonOpen, setCashbonOpen] = useState(false);
+  const [cashbonForm, setCashbonForm] = useState({ amount: '', notes: '' });
+  const [cashbonSubmitting, setCashbonSubmitting] = useState(false);
+  const [cashbonRecords, setCashbonRecords] = useState<CashbonRecord[]>([]);
+
+  const fetchCashbon = async () => {
+    if (!user) return;
+    const { data } = await supabase
+      .from('cashbon')
+      .select('id, request_date, amount, status, notes')
+      .eq('user_id', user.id)
+      .order('request_date', { ascending: false })
+      .limit(20);
+    if (data) setCashbonRecords(data as CashbonRecord[]);
+  };
 
   useEffect(() => {
     if (!user) return;
@@ -44,6 +68,7 @@ export default function ProfilePage() {
       .then(({ data }) => {
         if (data) setProfile(data as Profile);
       });
+    fetchCashbon();
   }, [user]);
 
   const handleLeaveSubmit = async (e: React.FormEvent) => {
