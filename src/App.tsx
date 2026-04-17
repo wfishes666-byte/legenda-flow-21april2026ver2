@@ -18,6 +18,7 @@ import PunishmentPage from "./pages/personalia/Punishment";
 import LeaveVerificationPage from "./pages/personalia/LeaveVerification";
 import PayrollPage from "./pages/personalia/Payroll";
 import RoleManagementPage from "./pages/personalia/RoleManagement";
+import ActivityLogPage from "./pages/ActivityLog";
 
 // Finance
 import DailyRecapPage from "./pages/finance/DailyRecap";
@@ -68,6 +69,7 @@ function AppRoutes() {
       <Route path="/personalia/leave" element={<ProtectedRoute allowedRoles={['management', 'pic']}><LeaveVerificationPage /></ProtectedRoute>} />
       <Route path="/personalia/payroll" element={<ProtectedRoute allowedRoles={['management', 'pic']}><PayrollPage /></ProtectedRoute>} />
       <Route path="/personalia/roles" element={<ProtectedRoute allowedRoles={['management']}><RoleManagementPage /></ProtectedRoute>} />
+      <Route path="/activity-log" element={<ProtectedRoute allowedRoles={['management']}><ActivityLogPage /></ProtectedRoute>} />
 
       {/* Finance */}
       <Route path="/finance/daily-recap" element={<ProtectedRoute allowedRoles={['management', 'pic']}><DailyRecapPage /></ProtectedRoute>} />
