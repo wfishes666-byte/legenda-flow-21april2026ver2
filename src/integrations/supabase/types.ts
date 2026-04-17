@@ -115,9 +115,15 @@ export type Database = {
           created_at: string | null
           created_by: string
           description: string | null
+          engagement_comments: number | null
+          engagement_likes: number | null
+          engagement_reach: number | null
+          engagement_shares: number | null
+          engagement_views: number | null
           id: string
           notes: string | null
           platform: string
+          rate_card: number | null
           scheduled_date: string | null
           status: string
           title: string
@@ -128,9 +134,15 @@ export type Database = {
           created_at?: string | null
           created_by: string
           description?: string | null
+          engagement_comments?: number | null
+          engagement_likes?: number | null
+          engagement_reach?: number | null
+          engagement_shares?: number | null
+          engagement_views?: number | null
           id?: string
           notes?: string | null
           platform?: string
+          rate_card?: number | null
           scheduled_date?: string | null
           status?: string
           title: string
@@ -141,9 +153,15 @@ export type Database = {
           created_at?: string | null
           created_by?: string
           description?: string | null
+          engagement_comments?: number | null
+          engagement_likes?: number | null
+          engagement_reach?: number | null
+          engagement_shares?: number | null
+          engagement_views?: number | null
           id?: string
           notes?: string | null
           platform?: string
+          rate_card?: number | null
           scheduled_date?: string | null
           status?: string
           title?: string
@@ -517,6 +535,7 @@ export type Database = {
       profiles: {
         Row: {
           address: string | null
+          base_salary: number | null
           contract_end_date: string | null
           created_at: string | null
           date_of_birth: string | null
@@ -525,14 +544,17 @@ export type Database = {
           full_name: string
           id: string
           job_title: string | null
+          meal_allowance: number | null
           outlet_id: string | null
           phone: string | null
+          transport_allowance: number | null
           updated_at: string | null
           user_id: string
           warning_letter_status: string | null
         }
         Insert: {
           address?: string | null
+          base_salary?: number | null
           contract_end_date?: string | null
           created_at?: string | null
           date_of_birth?: string | null
@@ -541,14 +563,17 @@ export type Database = {
           full_name?: string
           id?: string
           job_title?: string | null
+          meal_allowance?: number | null
           outlet_id?: string | null
           phone?: string | null
+          transport_allowance?: number | null
           updated_at?: string | null
           user_id: string
           warning_letter_status?: string | null
         }
         Update: {
           address?: string | null
+          base_salary?: number | null
           contract_end_date?: string | null
           created_at?: string | null
           date_of_birth?: string | null
@@ -557,8 +582,10 @@ export type Database = {
           full_name?: string
           id?: string
           job_title?: string | null
+          meal_allowance?: number | null
           outlet_id?: string | null
           phone?: string | null
+          transport_allowance?: number | null
           updated_at?: string | null
           user_id?: string
           warning_letter_status?: string | null
