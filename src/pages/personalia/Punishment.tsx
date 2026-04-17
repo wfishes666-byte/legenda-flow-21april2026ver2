@@ -40,10 +40,8 @@ export default function PunishmentPage() {
   const fetchData = async () => {
     const { data } = await supabase.from('punishments').select('*').order('issued_date', { ascending: false }).limit(200);
     if (data) setRecords(data);
-    if (canManage) {
-      const { data: p } = await supabase.from('profiles').select('user_id, full_name').order('full_name');
-      if (p) setProfiles(p);
-    }
+    const { data: p } = await supabase.from('profiles').select('user_id, full_name, job_title, discipline_points, warning_letter_status').order('full_name');
+    if (p) setProfiles(p);
   };
 
   useEffect(() => { fetchData(); }, [role]);
