@@ -60,14 +60,48 @@ export default function ProfilePage() {
 
   useEffect(() => {
     if (!user) return;
-    supabase
-      .from('profiles')
-      .select('*')
-      .eq('user_id', user.id)
-      .maybeSingle()
-      .then(({ data }) => {
-        if (data) setProfile(data as Profile);
-      });
+    const loadProfile = async () => {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('full_name, phone, address, date_of_birth, job_title, discipline_points, warning_letter_status, employment_status, contract_end_date')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (error) {
+        console.error('Profile load error:', error);
+        toast({ title: 'Gagal memuat profil', description: error.message, variant: 'destructive' });
+      }
+
+      if (data) {
+        setProfile(data as Profile);
+      } else {
+        // Auto-create profil kosong jika belum ada (mis. user lama sebelum trigger)
+        const fullName = (user.user_metadata as any)?.full_name || user.email?.split('@')[0] || '';
+        const { data: inserted, error: insErr } = await supabase
+          .from('profiles')
+          .insert({ user_id: user.id, full_name: fullName })
+          .select('full_name, phone, address, date_of_birth, job_title, discipline_points, warning_letter_status, employment_status, contract_end_date')
+          .maybeSingle();
+        if (insErr) {
+          console.error('Profile create error:', insErr);
+          // Tetap tampilkan UI dengan data default agar tidak stuck "Memuat..."
+          setProfile({
+            full_name: fullName,
+            phone: '',
+            address: '',
+            date_of_birth: null,
+            job_title: '',
+            discipline_points: 0,
+            warning_letter_status: 'Non-SP',
+            employment_status: 'Contract',
+            contract_end_date: null,
+          });
+        } else if (inserted) {
+          setProfile(inserted as Profile);
+        }
+      }
+    };
+    loadProfile();
     fetchCashbon();
   }, [user]);
 
