@@ -157,6 +157,16 @@ export default function ContentPlanPage() {
                   </Select>
                 </div>
                 <div className="sm:col-span-2 space-y-2">
+                  <Label>Rate Card / Biaya Konten</Label>
+                  <Input
+                    type="text"
+                    inputMode="numeric"
+                    placeholder="Rp 0"
+                    value={form.rate_card ? `Rp ${(parseInt(form.rate_card.replace(/\D/g, '')) || 0).toLocaleString('id-ID')}` : ''}
+                    onChange={(e) => setForm({ ...form, rate_card: e.target.value.replace(/\D/g, '') })}
+                  />
+                </div>
+                <div className="sm:col-span-2 space-y-2">
                   <Label>Deskripsi</Label>
                   <Textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Deskripsi konten..." />
                 </div>
@@ -178,12 +188,17 @@ export default function ContentPlanPage() {
                     <th className="p-3 font-medium">Jadwal</th>
                     <th className="p-3 font-medium">Judul</th>
                     <th className="p-3 font-medium">Platform</th>
+                    <th className="p-3 font-medium">Rate Card</th>
                     <th className="p-3 font-medium">Status</th>
                     {canEdit && <th className="p-3 font-medium">Ubah Status</th>}
+                    {canEdit && <th className="p-3 font-medium min-w-[280px]">Engagement</th>}
                   </tr>
                 </thead>
                 <tbody>
-                  {records.map((r) => (
+                  {records.map((r) => {
+                    const editing = engagementEdit[r.id];
+                    const totalEng = (r.engagement_likes || 0) + (r.engagement_comments || 0) + (r.engagement_shares || 0);
+                    return (
                     <tr key={r.id} className="border-b border-border/50 hover:bg-muted/30">
                       <td className="p-3">{r.scheduled_date || '-'}</td>
                       <td className="p-3">
@@ -191,6 +206,7 @@ export default function ContentPlanPage() {
                         {r.description && <p className="text-xs text-muted-foreground mt-1 truncate max-w-xs">{r.description}</p>}
                       </td>
                       <td className="p-3 capitalize">{r.platform}</td>
+                      <td className="p-3 whitespace-nowrap">{formatRupiah(r.rate_card || 0)}</td>
                       <td className="p-3"><Badge variant={statusColors[r.status] || 'outline'}>{statusLabels[r.status] || r.status}</Badge></td>
                       {canEdit && (
                         <td className="p-3">
@@ -206,10 +222,61 @@ export default function ContentPlanPage() {
                           </Select>
                         </td>
                       )}
+                      {canEdit && (
+                        <td className="p-3">
+                          {editing ? (
+                            <div className="space-y-2">
+                              <div className="grid grid-cols-5 gap-1">
+                                {[
+                                  { k: 'likes', label: '❤️' },
+                                  { k: 'comments', label: '💬' },
+                                  { k: 'shares', label: '🔁' },
+                                  { k: 'views', label: '👁' },
+                                  { k: 'reach', label: '📡' },
+                                ].map((f) => (
+                                  <div key={f.k} className="flex flex-col items-center">
+                                    <span className="text-[10px]">{f.label}</span>
+                                    <Input
+                                      type="number"
+                                      min={0}
+                                      value={editing[f.k] ?? 0}
+                                      onChange={(ev) =>
+                                        setEngagementEdit({
+                                          ...engagementEdit,
+                                          [r.id]: { ...editing, [f.k]: ev.target.value },
+                                        })
+                                      }
+                                      className="h-7 text-xs px-1 text-center"
+                                    />
+                                  </div>
+                                ))}
+                              </div>
+                              <div className="flex gap-1">
+                                <Button size="sm" className="h-7 text-xs flex-1" onClick={() => handleSaveEngagement(r.id)}>Simpan</Button>
+                                <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setEngagementEdit({ ...engagementEdit, [r.id]: undefined })}>Batal</Button>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="space-y-1">
+                              <div className="flex flex-wrap gap-1 text-[11px] text-muted-foreground">
+                                <span>❤️ {r.engagement_likes || 0}</span>
+                                <span>💬 {r.engagement_comments || 0}</span>
+                                <span>🔁 {r.engagement_shares || 0}</span>
+                                <span>👁 {(r.engagement_views || 0).toLocaleString('id-ID')}</span>
+                                <span>📡 {(r.engagement_reach || 0).toLocaleString('id-ID')}</span>
+                              </div>
+                              <Button size="sm" variant="outline" className="h-6 text-[10px] px-2" onClick={() => startEditEngagement(r)}>
+                                Input Engagement
+                              </Button>
+                            </div>
+                          )}
+                        </td>
+                      )}
                     </tr>
-                  ))}
+                    );
+                  })}
                   {records.length === 0 && (
-                    <tr><td colSpan={5} className="p-8 text-center text-muted-foreground">Belum ada content plan.</td></tr>
+                    <tr><td colSpan={canEdit ? 7 : 5} className="p-8 text-center text-muted-foreground">Belum ada content plan.</td></tr>
                   )}
                 </tbody>
               </table>
