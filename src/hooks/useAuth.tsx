@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
+import { logActivity } from '@/lib/activityLog';
 
 export type AppRole = 'staff' | 'management' | 'pic' | 'crew' | 'stockman';
 
@@ -60,6 +61,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signIn = async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (!error) {
+      setTimeout(() => logActivity({ module: 'Auth', action: 'Login', description: `Login berhasil (${email})` }), 100);
+    }
     return { error };
   };
 
@@ -69,10 +73,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       password,
       options: { data: { full_name: fullName } },
     });
+    if (!error) {
+      setTimeout(() => logActivity({ module: 'Auth', action: 'Sign Up', description: `Pendaftaran akun baru (${email})` }), 100);
+    }
     return { error };
   };
 
   const signOut = async () => {
+    await logActivity({ module: 'Auth', action: 'Logout', description: 'Pengguna keluar dari sistem' });
     await supabase.auth.signOut();
   };
 
