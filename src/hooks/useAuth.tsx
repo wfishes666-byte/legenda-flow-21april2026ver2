@@ -3,7 +3,7 @@ import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { logActivity } from '@/lib/activityLog';
 
-export type AppRole = 'staff' | 'management' | 'pic' | 'crew' | 'stockman';
+export type AppRole = 'staff' | 'management' | 'pic' | 'crew' | 'stockman' | 'admin';
 
 export interface SignUpPayload {
   full_name: string;
