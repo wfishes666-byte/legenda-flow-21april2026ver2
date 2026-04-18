@@ -269,9 +269,6 @@ export default function SettingsPage() {
                 alt=""
                 className="h-10 w-10 object-contain opacity-50 group-hover:opacity-100 transition-opacity pointer-events-none select-none"
               />
-              <span className="text-xs text-muted-foreground group-hover:text-primary transition-colors hidden sm:inline">
-                🔒 Rahasia Admin
-              </span>
             </button>
           ) : (
             <span />
