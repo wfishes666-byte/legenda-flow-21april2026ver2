@@ -116,7 +116,7 @@ export default function ReportSection({
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
                     {unassignedInGroup > 0 && (
-                      <Badge className="bg-warning/20 text-warning-foreground border-warning/40">
+                      <Badge variant="outline" className="bg-background/20 border-background/40">
                         {unassignedInGroup} belum
                       </Badge>
                     )}
