@@ -735,10 +735,19 @@ function OutletsManagementTab() {
                       <td className="p-3">
                         <Input
                           type="number"
-                          min={10}
-                          value={o.radius_meters ?? 100}
-                          onChange={(e) => updateField(o.id, { radius_meters: parseInt(e.target.value) || 100 })}
-                          className="w-24"
+                          min={1}
+                          value={o.radius_meters ?? ''}
+                          onChange={(e) => {
+                            const v = e.target.value;
+                            if (v === '') {
+                              updateField(o.id, { radius_meters: null });
+                              return;
+                            }
+                            const n = parseInt(v, 10);
+                            updateField(o.id, { radius_meters: Number.isNaN(n) ? null : n });
+                          }}
+                          placeholder="100"
+                          className="w-28"
                         />
                       </td>
                       <td className="p-3">
