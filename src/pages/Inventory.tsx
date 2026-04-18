@@ -171,7 +171,7 @@ export default function InventoryPage() {
 
   return (
     <AppLayout>
-      <div className="max-w-4xl mx-auto space-y-6 pt-12 md:pt-0">
+      <div className="max-w-4xl mx-auto space-y-6">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
             <h1 className="text-2xl md:text-3xl font-bold font-sans">Stok & Inventaris</h1>
