@@ -88,11 +88,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { error };
   };
 
-  const signUp = async (email: string, password: string, fullName: string) => {
+  const signUp = async (email: string, password: string, payload: SignUpPayload) => {
+    const redirectUrl = `${window.location.origin}/`;
     const { error } = await supabase.auth.signUp({
       email,
       password,
-      options: { data: { full_name: fullName } },
+      options: {
+        emailRedirectTo: redirectUrl,
+        data: {
+          full_name: payload.full_name,
+          nickname: payload.nickname || '',
+          address: payload.address || '',
+          phone: payload.phone || '',
+          nik: payload.nik || '',
+          outlet_id: payload.outlet_id || '',
+          join_month: payload.join_month || '',
+          join_year: payload.join_year || '',
+        },
+      },
     });
     if (!error) {
       setTimeout(() => logActivity({ module: 'Auth', action: 'Sign Up', description: `Pendaftaran akun baru (${email})` }), 100);
