@@ -107,7 +107,76 @@ export default function StaffManagement() {
           <p className="text-muted-foreground mt-1">Edit data profil karyawan</p>
         </div>
 
-        <Card className="glass-card">
+        {/* Mobile card view */}
+        <div className="space-y-2 md:hidden">
+          {profiles.map((p) => {
+            const outletName = outlets.find((o) => o.id === p.outlet_id)?.name || '-';
+            return (
+              <div key={p.id} className="rounded-xl border border-border bg-card p-3 shadow-sm">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0 flex-1">
+                    <div className="font-semibold text-sm break-words">{p.full_name || '-'}</div>
+                    {p.nickname && <div className="text-xs text-muted-foreground">({p.nickname})</div>}
+                    <div className="text-xs text-muted-foreground mt-0.5 break-words">{p.job_title || '-'} · {outletName}</div>
+                  </div>
+                  <Badge variant={p.employment_status === 'Permanent' ? 'default' : 'outline'} className="shrink-0 text-[10px]">
+                    {p.employment_status}
+                  </Badge>
+                </div>
+                <div className="mt-3 grid grid-cols-2 gap-x-3 gap-y-1.5 text-xs">
+                  <div className="min-w-0">
+                    <div className="text-muted-foreground">Telepon</div>
+                    <div className="font-medium truncate">{p.phone || '-'}</div>
+                  </div>
+                  <div className="min-w-0">
+                    <div className="text-muted-foreground">Status SP</div>
+                    <div className="font-medium truncate">{p.warning_letter_status}</div>
+                  </div>
+                  <div className="min-w-0">
+                    <div className="text-muted-foreground">Poin Disiplin</div>
+                    <div>
+                      <Badge variant={p.discipline_points > 3 ? 'destructive' : 'secondary'} className="text-[10px]">
+                        {p.discipline_points}
+                      </Badge>
+                    </div>
+                  </div>
+                </div>
+                <div className="mt-3 flex gap-2 justify-end">
+                  <Button variant="outline" size="sm" className="h-8" onClick={() => setEditProfile({ ...p })}>
+                    <Pencil className="w-3.5 h-3.5 mr-1" /> Edit
+                  </Button>
+                  {canDelete && (
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button variant="outline" size="sm" className="h-8 text-destructive hover:text-destructive">
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Hapus Karyawan</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Yakin ingin menghapus profil <strong>{p.full_name}</strong>? Tindakan ini tidak dapat dibatalkan.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Batal</AlertDialogCancel>
+                          <AlertDialogAction onClick={() => handleDelete(p)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Hapus</AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+          {profiles.length === 0 && (
+            <p className="text-center text-muted-foreground text-sm py-8">Belum ada karyawan.</p>
+          )}
+        </div>
+
+        {/* Desktop table */}
+        <Card className="glass-card hidden md:block">
           <CardContent className="p-0">
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
