@@ -29,6 +29,7 @@ import { Button } from '@/components/ui/button';
 import { useState } from 'react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import ThemeToggle from './ThemeToggle';
+import logoKop from '@/assets/logo-kop.png';
 
 interface NavItem {
   to: string;
@@ -142,11 +143,13 @@ export default function AppSidebar() {
           open ? 'translate-x-0' : '-translate-x-full'
         )}
       >
-        <div className="p-6 border-b border-sidebar-border bg-sidebar-accent/30">
-          <h1 className="text-xl font-bold text-sidebar-primary font-heading">
-            Dua Legenda
-          </h1>
-          <p className="text-xs text-sidebar-foreground/60 mt-1">Business Management</p>
+        <div className="p-6 border-b border-sidebar-border bg-sidebar-accent/30 flex flex-col items-center">
+          <img
+            src={logoKop}
+            alt="Dua Legenda"
+            className="max-h-16 w-auto object-contain"
+          />
+          <p className="text-xs text-sidebar-foreground/60 mt-2">Business Management</p>
         </div>
 
         <nav className="flex-1 p-3 space-y-1">
