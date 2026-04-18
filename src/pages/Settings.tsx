@@ -5,12 +5,16 @@ import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
+import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useAppSettings, FONT_OPTIONS, hexToHsl, hslToHex, FontFamilyKey } from '@/hooks/useAppSettings';
 import { useAuth } from '@/hooks/useAuth';
 import { Navigate } from 'react-router-dom';
-import { Settings as SettingsIcon, RotateCcw, Upload, Image as ImageIcon } from 'lucide-react';
+import { Settings as SettingsIcon, RotateCcw, Upload, Image as ImageIcon, KeyRound, Eye, EyeOff } from 'lucide-react';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
+import nagaBg from '@/assets/naga-bg.png';
 
 function ColorPicker({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
   return (
@@ -35,7 +39,15 @@ export default function SettingsPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
 
-  if (role !== 'management') {
+  // Hidden password feature (admin only)
+  const [dragonClicks, setDragonClicks] = useState(0);
+  const [pwDialogOpen, setPwDialogOpen] = useState(false);
+  const [newPw, setNewPw] = useState('');
+  const [confirmPw, setConfirmPw] = useState('');
+  const [showPw, setShowPw] = useState(false);
+  const [savingPw, setSavingPw] = useState(false);
+
+  if (role !== 'management' && role !== 'admin') {
     return <Navigate to="/profile" replace />;
   }
 
@@ -61,6 +73,40 @@ export default function SettingsPage() {
       toast.error('Gagal mengunggah logo');
       setUploading(false);
     }
+  };
+
+  const handleDragonClick = () => {
+    if (role !== 'admin') return;
+    const next = dragonClicks + 1;
+    setDragonClicks(next);
+    if (next >= 3) {
+      setDragonClicks(0);
+      setPwDialogOpen(true);
+    }
+    // Reset counter setelah 1.5s tanpa klik
+    setTimeout(() => setDragonClicks(0), 1500);
+  };
+
+  const handleChangePassword = async () => {
+    if (newPw.length < 6) {
+      toast.error('Password minimal 6 karakter');
+      return;
+    }
+    if (newPw !== confirmPw) {
+      toast.error('Konfirmasi password tidak cocok');
+      return;
+    }
+    setSavingPw(true);
+    const { error } = await supabase.auth.updateUser({ password: newPw });
+    setSavingPw(false);
+    if (error) {
+      toast.error(error.message || 'Gagal mengubah password');
+      return;
+    }
+    toast.success('Password berhasil diubah');
+    setPwDialogOpen(false);
+    setNewPw('');
+    setConfirmPw('');
   };
 
   return (
@@ -216,12 +262,82 @@ export default function SettingsPage() {
           </CardContent>
         </Card>
 
-        <div className="flex justify-end">
+        <div className="flex justify-between items-center gap-3">
+          {/* Hidden dragon trigger — admin only. Klik 3x untuk ganti password */}
+          {role === 'admin' ? (
+            <button
+              type="button"
+              onClick={handleDragonClick}
+              aria-label="Naga"
+              title=""
+              className="opacity-40 hover:opacity-100 transition-opacity rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+            >
+              <img src={nagaBg} alt="" className="h-12 w-12 object-contain pointer-events-none select-none" />
+            </button>
+          ) : (
+            <span />
+          )}
+
           <Button variant="outline" onClick={() => { resetSettings(); toast.success('Pengaturan dikembalikan ke default'); }}>
             <RotateCcw className="w-4 h-4 mr-2" /> Kembalikan ke Default
           </Button>
         </div>
       </div>
+
+      {/* Hidden Password Change Dialog */}
+      <Dialog open={pwDialogOpen} onOpenChange={(o) => { setPwDialogOpen(o); if (!o) { setNewPw(''); setConfirmPw(''); } }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <KeyRound className="w-5 h-5 text-primary" />
+              Ganti Password Admin
+            </DialogTitle>
+            <DialogDescription>
+              Fitur tersembunyi khusus admin. Masukkan password baru untuk akun Anda.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label>Password Baru</Label>
+              <div className="relative">
+                <Input
+                  type={showPw ? 'text' : 'password'}
+                  value={newPw}
+                  onChange={(e) => setNewPw(e.target.value)}
+                  placeholder="Minimal 6 karakter"
+                  autoComplete="new-password"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPw((s) => !s)}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  aria-label={showPw ? 'Sembunyikan' : 'Tampilkan'}
+                >
+                  {showPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Konfirmasi Password</Label>
+              <Input
+                type={showPw ? 'text' : 'password'}
+                value={confirmPw}
+                onChange={(e) => setConfirmPw(e.target.value)}
+                placeholder="Ulangi password baru"
+                autoComplete="new-password"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPwDialogOpen(false)} disabled={savingPw}>
+              Batal
+            </Button>
+            <Button onClick={handleChangePassword} disabled={savingPw || !newPw || !confirmPw}>
+              {savingPw ? 'Menyimpan...' : 'Simpan Password'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </AppLayout>
   );
 }

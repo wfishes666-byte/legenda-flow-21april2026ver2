@@ -95,8 +95,8 @@ function AppRoutes() {
       {/* Marketing */}
       <Route path="/marketing/content-plan" element={<ProtectedRoute allowedRoles={['management', 'pic']}><ContentPlanPage /></ProtectedRoute>} />
 
-      {/* Settings (admin only) */}
-      <Route path="/settings" element={<ProtectedRoute allowedRoles={['management']}><SettingsPage /></ProtectedRoute>} />
+      {/* Settings (admin & management) */}
+      <Route path="/settings" element={<ProtectedRoute allowedRoles={['admin', 'management']}><SettingsPage /></ProtectedRoute>} />
 
       {/* Legacy redirects */}
       <Route path="/financial-report" element={<Navigate to="/daily-report" replace />} />
