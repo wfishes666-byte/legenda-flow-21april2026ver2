@@ -147,8 +147,8 @@ export default function Login() {
                   <div className="space-y-2">
                     <Label>Bulan Bergabung</Label>
                     <Select value={joinMonth} onValueChange={setJoinMonth}>
-                      <SelectTrigger><SelectValue placeholder="Bulan" /></SelectTrigger>
-                      <SelectContent>
+                      <SelectTrigger className="w-full"><SelectValue placeholder="Bulan" /></SelectTrigger>
+                      <SelectContent className="z-[200] max-h-60" position="popper" sideOffset={4}>
                         {months.map((m, i) =>
                       <SelectItem key={m} value={String(i + 1).padStart(2, '0')}>{m}</SelectItem>
                       )}
@@ -158,8 +158,8 @@ export default function Login() {
                   <div className="space-y-2">
                     <Label>Tahun Bergabung</Label>
                     <Select value={joinYear} onValueChange={setJoinYear}>
-                      <SelectTrigger><SelectValue placeholder="Tahun" /></SelectTrigger>
-                      <SelectContent>
+                      <SelectTrigger className="w-full"><SelectValue placeholder="Tahun" /></SelectTrigger>
+                      <SelectContent className="z-[200] max-h-60" position="popper" sideOffset={4}>
                         {years.map((y) =>
                       <SelectItem key={y} value={String(y)}>{y}</SelectItem>
                       )}
