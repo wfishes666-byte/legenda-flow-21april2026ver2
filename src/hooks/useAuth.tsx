@@ -5,6 +5,17 @@ import { logActivity } from '@/lib/activityLog';
 
 export type AppRole = 'staff' | 'management' | 'pic' | 'crew' | 'stockman';
 
+export interface SignUpPayload {
+  full_name: string;
+  nickname?: string;
+  address?: string;
+  phone?: string;
+  nik?: string;
+  outlet_id?: string | null;
+  join_month?: string;
+  join_year?: string;
+}
+
 interface AuthContextType {
   session: Session | null;
   user: User | null;
