@@ -18,6 +18,7 @@ interface StaffProfile {
   id: string;
   user_id: string;
   full_name: string;
+  nickname: string;
   phone: string;
   address: string;
   date_of_birth: string | null;
@@ -30,6 +31,8 @@ interface StaffProfile {
   base_salary: number;
   transport_allowance: number;
   meal_allowance: number;
+  nik: string;
+  join_date: string | null;
 }
 
 const formatRupiah = (n: number) => `Rp ${Math.round(n || 0).toLocaleString('id-ID')}`;
