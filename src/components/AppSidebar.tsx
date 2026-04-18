@@ -22,6 +22,7 @@ import {
   ChevronDown,
   ShieldCheck,
   Activity,
+  Camera,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -56,6 +57,7 @@ const navGroups: NavGroup[] = [
     icon: Users,
     roles: ['management', 'pic', 'crew', 'stockman', 'staff'],
     items: [
+      { to: '/attendance/check-in', icon: Camera, label: 'Absen Sekarang (Selfie)', roles: ['management', 'pic', 'crew', 'stockman', 'staff'] },
       { to: '/personalia/staff', icon: Users, label: 'Data Karyawan', roles: ['management', 'pic'] },
       { to: '/personalia/performance', icon: ClipboardList, label: 'Penilaian Kinerja', roles: ['management', 'pic'] },
       { to: '/personalia/attendance', icon: CalendarCheck, label: 'Rekapan Absensi', roles: ['management', 'pic'] },

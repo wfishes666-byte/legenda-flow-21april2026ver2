@@ -12,6 +12,7 @@ import NotFound from "./pages/NotFound";
 
 // Personalia
 import AttendancePage from "./pages/personalia/Attendance";
+import CheckInPage from "./pages/personalia/CheckIn";
 import CashbonPage from "./pages/personalia/Cashbon";
 import PerformanceReviewPage from "./pages/personalia/PerformanceReview";
 import PunishmentPage from "./pages/personalia/Punishment";
@@ -65,6 +66,7 @@ function AppRoutes() {
       <Route path="/personalia/staff" element={<ProtectedRoute allowedRoles={['management', 'pic']}><StaffManagement /></ProtectedRoute>} />
       <Route path="/personalia/performance" element={<ProtectedRoute allowedRoles={['management', 'pic']}><PerformanceReviewPage /></ProtectedRoute>} />
       <Route path="/personalia/attendance" element={<ProtectedRoute allowedRoles={['management', 'pic']}><AttendancePage /></ProtectedRoute>} />
+      <Route path="/attendance/check-in" element={<ProtectedRoute><CheckInPage /></ProtectedRoute>} />
       <Route path="/personalia/cashbon" element={<ProtectedRoute><CashbonPage /></ProtectedRoute>} />
       <Route path="/personalia/punishment" element={<ProtectedRoute allowedRoles={['management', 'pic']}><PunishmentPage /></ProtectedRoute>} />
       <Route path="/personalia/leave" element={<ProtectedRoute allowedRoles={['management', 'pic']}><LeaveVerificationPage /></ProtectedRoute>} />

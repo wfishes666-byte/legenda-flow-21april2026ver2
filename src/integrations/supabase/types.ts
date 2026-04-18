@@ -109,6 +109,62 @@ export type Database = {
           },
         ]
       }
+      attendance_logs: {
+        Row: {
+          accuracy_meters: number | null
+          created_at: string
+          device_info: string | null
+          distance_from_outlet_meters: number | null
+          id: string
+          latitude: number
+          log_type: string
+          longitude: number
+          notes: string | null
+          out_of_radius: boolean
+          outlet_id: string | null
+          selfie_url: string
+          user_id: string
+        }
+        Insert: {
+          accuracy_meters?: number | null
+          created_at?: string
+          device_info?: string | null
+          distance_from_outlet_meters?: number | null
+          id?: string
+          latitude: number
+          log_type?: string
+          longitude: number
+          notes?: string | null
+          out_of_radius?: boolean
+          outlet_id?: string | null
+          selfie_url: string
+          user_id: string
+        }
+        Update: {
+          accuracy_meters?: number | null
+          created_at?: string
+          device_info?: string | null
+          distance_from_outlet_meters?: number | null
+          id?: string
+          latitude?: number
+          log_type?: string
+          longitude?: number
+          notes?: string | null
+          out_of_radius?: boolean
+          outlet_id?: string | null
+          selfie_url?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "attendance_logs_outlet_id_fkey"
+            columns: ["outlet_id"]
+            isOneToOne: false
+            referencedRelation: "outlets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cashbon: {
         Row: {
           amount: number
@@ -567,17 +623,26 @@ export type Database = {
         Row: {
           created_at: string | null
           id: string
+          latitude: number | null
+          longitude: number | null
           name: string
+          radius_meters: number | null
         }
         Insert: {
           created_at?: string | null
           id?: string
+          latitude?: number | null
+          longitude?: number | null
           name: string
+          radius_meters?: number | null
         }
         Update: {
           created_at?: string | null
           id?: string
+          latitude?: number | null
+          longitude?: number | null
           name?: string
+          radius_meters?: number | null
         }
         Relationships: []
       }

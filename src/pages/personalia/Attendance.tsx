@@ -181,6 +181,7 @@ export default function AttendancePage() {
           <TabsList>
             <TabsTrigger value="input">Input Absensi</TabsTrigger>
             <TabsTrigger value="recap">Rekap Bulanan</TabsTrigger>
+            <TabsTrigger value="logs">Log Absen Selfie</TabsTrigger>
           </TabsList>
 
           <TabsContent value="input" className="space-y-4">
@@ -354,6 +355,10 @@ export default function AttendancePage() {
           <TabsContent value="recap">
             <RecapTab outletId={selectedOutlet} profiles={outletProfiles} />
           </TabsContent>
+
+          <TabsContent value="logs">
+            <SelfieLogsTab outletId={selectedOutlet} profiles={outletProfiles} />
+          </TabsContent>
         </Tabs>
       </div>
     </AppLayout>
@@ -431,6 +436,108 @@ function RecapTab({ outletId, profiles }: { outletId: string; profiles: Profile[
               ))}
               {summary.length === 0 && (
                 <tr><td colSpan={9} className="p-8 text-center text-muted-foreground">Belum ada data.</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function SelfieLogsTab({ outletId, profiles }: { outletId: string; profiles: Profile[] }) {
+  const [logs, setLogs] = useState<any[]>([]);
+  const [date, setDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [userFilter, setUserFilter] = useState<string>('all');
+
+  useEffect(() => {
+    if (!outletId || profiles.length === 0) { setLogs([]); return; }
+    const userIds = profiles.map((p) => p.user_id);
+    const start = `${date}T00:00:00`;
+    const end = `${date}T23:59:59`;
+    supabase
+      .from('attendance_logs')
+      .select('*')
+      .gte('created_at', start)
+      .lte('created_at', end)
+      .in('user_id', userIds)
+      .order('created_at', { ascending: false })
+      .then(({ data }) => setLogs(data || []));
+  }, [outletId, date, profiles]);
+
+  const profileMap = new Map(profiles.map((p) => [p.user_id, p]));
+  const filtered = userFilter === 'all' ? logs : logs.filter((l) => l.user_id === userFilter);
+
+  return (
+    <Card className="glass-card">
+      <CardContent className="p-4 space-y-4">
+        <div className="flex flex-wrap gap-2 items-center">
+          <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="w-44" />
+          <select
+            value={userFilter}
+            onChange={(e) => setUserFilter(e.target.value)}
+            className="h-10 px-3 rounded-md border border-input bg-background text-sm"
+          >
+            <option value="all">Semua karyawan</option>
+            {profiles.map((p) => <option key={p.user_id} value={p.user_id}>{p.full_name}</option>)}
+          </select>
+          <span className="text-sm text-muted-foreground ml-auto">{filtered.length} log</span>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="text-left text-xs uppercase text-muted-foreground border-b border-border">
+                <th className="p-3">Foto</th>
+                <th className="p-3">Karyawan</th>
+                <th className="p-3">Waktu</th>
+                <th className="p-3">Tipe</th>
+                <th className="p-3">Lokasi</th>
+                <th className="p-3">Status</th>
+                <th className="p-3">Catatan</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map((log) => {
+                const prof = profileMap.get(log.user_id);
+                const mapsLink = `https://www.google.com/maps?q=${log.latitude},${log.longitude}`;
+                return (
+                  <tr key={log.id} className="border-b border-border/50 hover:bg-muted/20">
+                    <td className="p-3">
+                      <a href={log.selfie_url} target="_blank" rel="noreferrer">
+                        <img src={log.selfie_url} alt="" className="w-14 h-14 rounded object-cover hover:ring-2 hover:ring-primary" />
+                      </a>
+                    </td>
+                    <td className="p-3 font-medium">{prof?.full_name || '—'}</td>
+                    <td className="p-3 font-mono text-xs">{format(new Date(log.created_at), 'HH:mm:ss')}</td>
+                    <td className="p-3">
+                      <span className={cn(
+                        'px-2 py-0.5 rounded text-xs font-bold',
+                        log.log_type === 'check_in' ? 'bg-emerald-500/15 text-emerald-700' : 'bg-blue-500/15 text-blue-700'
+                      )}>
+                        {log.log_type === 'check_in' ? 'IN' : 'OUT'}
+                      </span>
+                    </td>
+                    <td className="p-3">
+                      <a href={mapsLink} target="_blank" rel="noreferrer" className="text-primary hover:underline text-xs font-mono">
+                        {Number(log.latitude).toFixed(4)}, {Number(log.longitude).toFixed(4)}
+                      </a>
+                      {log.distance_from_outlet_meters != null && (
+                        <p className="text-xs text-muted-foreground">{Math.round(log.distance_from_outlet_meters)}m dari outlet</p>
+                      )}
+                    </td>
+                    <td className="p-3">
+                      {log.out_of_radius ? (
+                        <span className="px-2 py-0.5 rounded text-xs bg-destructive/15 text-destructive font-medium">Luar radius</span>
+                      ) : (
+                        <span className="px-2 py-0.5 rounded text-xs bg-emerald-500/15 text-emerald-700 font-medium">Dalam radius</span>
+                      )}
+                    </td>
+                    <td className="p-3 text-xs text-muted-foreground max-w-[200px] truncate">{log.notes || '-'}</td>
+                  </tr>
+                );
+              })}
+              {filtered.length === 0 && (
+                <tr><td colSpan={7} className="p-8 text-center text-muted-foreground">Belum ada log absen selfie pada tanggal ini.</td></tr>
               )}
             </tbody>
           </table>

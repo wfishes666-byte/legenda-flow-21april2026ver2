@@ -10,9 +10,10 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
-import { CalendarDays, Phone, MapPin, Briefcase, AlertTriangle, FileWarning, Clock, Banknote } from 'lucide-react';
+import { CalendarDays, Phone, MapPin, Briefcase, AlertTriangle, FileWarning, Clock, Banknote, Camera } from 'lucide-react';
 import { Badge as StatusBadge } from '@/components/ui/badge';
 import { format } from 'date-fns';
+import { useNavigate } from 'react-router-dom';
 
 interface Profile {
   full_name: string;
@@ -37,6 +38,7 @@ interface CashbonRecord {
 export default function ProfilePage() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [leaveOpen, setLeaveOpen] = useState(false);
   const [leaveForm, setLeaveForm] = useState({ start_date: '', end_date: '', reason: '' });
@@ -46,6 +48,19 @@ export default function ProfilePage() {
   const [cashbonForm, setCashbonForm] = useState({ amount: '', notes: '' });
   const [cashbonSubmitting, setCashbonSubmitting] = useState(false);
   const [cashbonRecords, setCashbonRecords] = useState<CashbonRecord[]>([]);
+  const [todayLogs, setTodayLogs] = useState<{ log_type: string; created_at: string; selfie_url: string }[]>([]);
+
+  const fetchTodayAttendance = async () => {
+    if (!user) return;
+    const start = new Date(); start.setHours(0, 0, 0, 0);
+    const { data } = await supabase
+      .from('attendance_logs')
+      .select('log_type, created_at, selfie_url')
+      .eq('user_id', user.id)
+      .gte('created_at', start.toISOString())
+      .order('created_at', { ascending: false });
+    if (data) setTodayLogs(data);
+  };
 
   const fetchCashbon = async () => {
     if (!user) return;
@@ -103,6 +118,7 @@ export default function ProfilePage() {
     };
     loadProfile();
     fetchCashbon();
+    fetchTodayAttendance();
   }, [user]);
 
   const handleLeaveSubmit = async (e: React.FormEvent) => {
@@ -230,6 +246,37 @@ export default function ProfilePage() {
                 </div>
               </div>
             </div>
+          </CardContent>
+        </Card>
+
+        {/* Absensi Hari Ini */}
+        <Card className="glass-card">
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle className="font-heading text-lg flex items-center gap-2">
+              <Camera className="w-5 h-5 text-primary" /> Absensi Hari Ini
+            </CardTitle>
+            <Button onClick={() => navigate('/attendance/check-in')} className="gap-2">
+              <Camera className="w-4 h-4" /> Absen Sekarang
+            </Button>
+          </CardHeader>
+          <CardContent>
+            {todayLogs.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Belum ada absensi hari ini. Klik "Absen Sekarang" untuk selfie + GPS.</p>
+            ) : (
+              <div className="flex flex-wrap gap-3">
+                {todayLogs.map((log, i) => (
+                  <div key={i} className="flex items-center gap-2 p-2 bg-muted/40 rounded-lg">
+                    <img src={log.selfie_url} alt="" className="w-10 h-10 rounded object-cover" />
+                    <div className="text-xs">
+                      <StatusBadge variant={log.log_type === 'check_in' ? 'default' : 'secondary'}>
+                        {log.log_type === 'check_in' ? 'IN' : 'OUT'}
+                      </StatusBadge>
+                      <p className="text-muted-foreground mt-0.5">{format(new Date(log.created_at), 'HH:mm:ss')}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
 
