@@ -257,6 +257,7 @@ export default function PayrollPage() {
                     <th className="p-3 font-medium">Potongan</th>
                     <th className="p-3 font-medium">Gaji Bersih</th>
                     <th className="p-3 font-medium">Status</th>
+                    <th className="p-3 font-medium text-right">Aksi</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -272,11 +273,16 @@ export default function PayrollPage() {
                         <td className="p-3 text-destructive">{formatRp(totalDeduction)}</td>
                         <td className="p-3 font-bold">{formatRp(r.net_salary)}</td>
                         <td className="p-3"><Badge variant={r.status === 'paid' ? 'default' : 'outline'}>{r.status}</Badge></td>
+                        <td className="p-3 text-right">
+                          <Button size="sm" variant="outline" onClick={() => handlePrint(r)}>
+                            <Printer className="w-4 h-4 mr-1" /> Cetak
+                          </Button>
+                        </td>
                       </tr>
                     );
                   })}
                   {records.length === 0 && (
-                    <tr><td colSpan={7} className="p-8 text-center text-muted-foreground">Belum ada data payroll.</td></tr>
+                    <tr><td colSpan={8} className="p-8 text-center text-muted-foreground">Belum ada data payroll.</td></tr>
                   )}
                 </tbody>
               </table>
