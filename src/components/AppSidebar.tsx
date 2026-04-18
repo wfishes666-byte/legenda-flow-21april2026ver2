@@ -59,7 +59,7 @@ const navGroups: NavGroup[] = [
   {
     label: 'Personalia',
     icon: Users,
-    roles: ['management', 'pic', 'crew', 'stockman', 'staff'],
+    roles: ['admin', 'management', 'pic', 'crew', 'stockman', 'staff'],
     items: [
       { to: '/attendance/check-in', icon: Camera, label: 'Absen Sekarang (Selfie)', roles: ['management', 'pic', 'crew', 'stockman', 'staff'] },
       { to: '/personalia/staff', icon: Users, label: 'Data Karyawan', roles: ['management', 'pic'] },
