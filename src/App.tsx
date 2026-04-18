@@ -6,6 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth, AppRole } from "@/hooks/useAuth";
 import { ThemeProvider } from "@/hooks/useTheme";
 import { AppSettingsProvider } from "@/hooks/useAppSettings";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import Login from "./pages/Login";
 import SettingsPage from "./pages/Settings";
 import ProfilePage from "./pages/Profile";
@@ -42,12 +43,15 @@ import ContentPlanPage from "./pages/marketing/ContentPlan";
 
 const queryClient = new QueryClient();
 
+// Admin is god — bypass all role checks
 function ProtectedRoute({ children, allowedRoles }: { children: React.ReactNode; allowedRoles?: AppRole[] }) {
   const { user, role, loading } = useAuth();
   if (loading) return <div className="flex items-center justify-center min-h-screen text-muted-foreground">Memuat...</div>;
   if (!user) return <Navigate to="/login" replace />;
-  if (allowedRoles && role && !allowedRoles.includes(role)) return <Navigate to="/profile" replace />;
-  return <>{children}</>;
+  // Wait for role to be resolved before enforcing role-based access
+  if (allowedRoles && !role) return <div className="flex items-center justify-center min-h-screen text-muted-foreground">Memuat hak akses...</div>;
+  if (allowedRoles && role && role !== 'admin' && !allowedRoles.includes(role)) return <Navigate to="/profile" replace />;
+  return <ErrorBoundary>{children}</ErrorBoundary>;
 }
 
 function AppRoutes() {
@@ -62,8 +66,8 @@ function AppRoutes() {
       {/* Profil */}
       <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
 
-      {/* Dashboard */}
-      <Route path="/dashboard" element={<ProtectedRoute allowedRoles={['management']}><DashboardPage /></ProtectedRoute>} />
+      {/* Dashboard - management & PIC */}
+      <Route path="/dashboard" element={<ProtectedRoute allowedRoles={['management', 'pic']}><DashboardPage /></ProtectedRoute>} />
 
       {/* Personalia */}
       <Route path="/personalia/staff" element={<ProtectedRoute allowedRoles={['management', 'pic']}><StaffManagement /></ProtectedRoute>} />
@@ -74,7 +78,8 @@ function AppRoutes() {
       <Route path="/personalia/punishment" element={<ProtectedRoute allowedRoles={['management', 'pic']}><PunishmentPage /></ProtectedRoute>} />
       <Route path="/personalia/leave" element={<ProtectedRoute allowedRoles={['management', 'pic']}><LeaveVerificationPage /></ProtectedRoute>} />
       <Route path="/personalia/payroll" element={<ProtectedRoute allowedRoles={['management', 'pic']}><PayrollPage /></ProtectedRoute>} />
-      <Route path="/personalia/roles" element={<ProtectedRoute allowedRoles={['management']}><RoleManagementPage /></ProtectedRoute>} />
+      {/* Role management — ADMIN only */}
+      <Route path="/personalia/roles" element={<ProtectedRoute allowedRoles={['admin']}><RoleManagementPage /></ProtectedRoute>} />
       <Route path="/activity-log" element={<ProtectedRoute allowedRoles={['management']}><ActivityLogPage /></ProtectedRoute>} />
 
       {/* Finance */}
@@ -93,7 +98,7 @@ function AppRoutes() {
       {/* Marketing */}
       <Route path="/marketing/content-plan" element={<ProtectedRoute allowedRoles={['management', 'pic']}><ContentPlanPage /></ProtectedRoute>} />
 
-      {/* Settings (admin only) */}
+      {/* Settings (admin & management) */}
       <Route path="/settings" element={<ProtectedRoute allowedRoles={['management']}><SettingsPage /></ProtectedRoute>} />
 
       {/* Legacy redirects */}
@@ -115,7 +120,9 @@ const App = () => (
           <Sonner />
           <BrowserRouter>
             <AuthProvider>
-              <AppRoutes />
+              <ErrorBoundary>
+                <AppRoutes />
+              </ErrorBoundary>
             </AuthProvider>
           </BrowserRouter>
         </TooltipProvider>
