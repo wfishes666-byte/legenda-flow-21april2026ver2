@@ -5,6 +5,8 @@ import { logActivity } from '@/lib/activityLog';
 
 export type AppRole = 'staff' | 'management' | 'pic' | 'crew' | 'stockman' | 'admin';
 
+const ROLE_PRIORITY: AppRole[] = ['admin', 'management', 'pic', 'stockman', 'staff', 'crew'];
+
 export interface SignUpPayload {
   full_name: string;
   nickname?: string;
@@ -45,26 +47,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   const fetchRole = async (userId: string) => {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('user_roles')
       .select('role')
       .eq('user_id', userId)
-      .limit(1)
-      .maybeSingle();
-    setRole((data?.role as AppRole) || 'crew');
+      .returns<{ role: AppRole }[]>();
+
+    if (error || !data?.length) {
+      setRole('crew');
+      return;
+    }
+
+    const resolvedRole = ROLE_PRIORITY.find((candidate) =>
+      data.some((row) => row.role === candidate)
+    ) || 'crew';
+
+    setRole(resolvedRole);
   };
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (_event, session) => {
+        setLoading(true);
         setSession(session);
         setUser(session?.user ?? null);
         if (session?.user) {
-          setTimeout(() => fetchRole(session.user.id), 0);
+          setTimeout(async () => {
+            await fetchRole(session.user.id);
+            setLoading(false);
+          }, 0);
         } else {
           setRole(null);
+          setLoading(false);
         }
-        setLoading(false);
       }
     );
 
@@ -72,8 +87,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.user) {
-        fetchRole(session.user.id);
+        fetchRole(session.user.id).finally(() => setLoading(false));
+        return;
       }
+      setRole(null);
       setLoading(false);
     });
 
