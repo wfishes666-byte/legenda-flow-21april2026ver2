@@ -17,6 +17,7 @@ import { format, endOfMonth, parseISO } from 'date-fns';
 import { id as localeId } from 'date-fns/locale';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import ReportSection from '@/components/finance/ReportSection';
 
 interface ExpenseRow {
   id: string;
