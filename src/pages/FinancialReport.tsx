@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import AppLayout from '@/components/AppLayout';
 import { useOutlets } from '@/hooks/useOutlets';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { CollapsibleSection } from '@/components/CollapsibleSection';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -416,13 +417,11 @@ export default function FinancialReport() {
           {/* LEFT: Form */}
           <div className="xl:col-span-2 space-y-6">
             {/* Data Penjualan */}
-            <Card className="glass-card">
-              <CardHeader>
-                <CardTitle className="text-base flex items-center gap-2">
-                  <FileText className="w-4 h-4 text-primary" /> Data Penjualan
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <CollapsibleSection
+              title="Data Penjualan"
+              icon={<FileText className="w-4 h-4 text-primary shrink-0" />}
+            >
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 <div className="col-span-2 space-y-1">
                   <Label className="text-xs uppercase">Nama Kasir / Pelapor</Label>
                   <Input value={form.reporter_name} onChange={(e) => setForm({ ...form, reporter_name: e.target.value })} />
@@ -463,17 +462,15 @@ export default function FinancialReport() {
                   <Label className="text-xs uppercase text-secondary-foreground">QRIS / Transfer</Label>
                   <Input inputMode="numeric" placeholder="Rp 0" value={form.ending_qris_cash ? formatRp(form.ending_qris_cash) : ''} onChange={(e) => setForm({ ...form, ending_qris_cash: parseNum(e.target.value) })} className="font-bold" />
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </CollapsibleSection>
 
             {/* Online */}
-            <Card className="glass-card">
-              <CardHeader>
-                <CardTitle className="text-base flex items-center gap-2">
-                  <FileSpreadsheet className="w-4 h-4 text-accent" /> Penjualan Online
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <CollapsibleSection
+              title="Penjualan Online"
+              icon={<FileSpreadsheet className="w-4 h-4 text-accent shrink-0" />}
+            >
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                 {[
                   { key: 'shopeefood_sales', label: 'ShopeeFood' },
                   { key: 'gofood_sales', label: 'GoFood' },
@@ -490,20 +487,20 @@ export default function FinancialReport() {
                     />
                   </div>
                 ))}
-              </CardContent>
-            </Card>
+              </div>
+            </CollapsibleSection>
 
             {/* Pengeluaran */}
-            <Card className="glass-card">
-              <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                <CardTitle className="text-base flex items-center gap-2 text-destructive min-w-0">
-                  <Trash2 className="w-4 h-4 shrink-0" /> <span className="break-words">Rincian Pengeluaran</span>
-                </CardTitle>
-                <Button type="button" size="sm" onClick={addExpenseRow} className="w-full sm:w-auto shrink-0">
-                  <Plus className="w-4 h-4 mr-1" /> Tambah Baris
+            <CollapsibleSection
+              title={<span className="text-destructive">Rincian Pengeluaran</span>}
+              icon={<Trash2 className="w-4 h-4 text-destructive shrink-0" />}
+              rightSlot={
+                <Button type="button" size="sm" onClick={(e) => { e.stopPropagation(); addExpenseRow(); }}>
+                  <Plus className="w-4 h-4 mr-1" /> Tambah
                 </Button>
-              </CardHeader>
-              <CardContent className="space-y-4">
+              }
+            >
+              <div className="space-y-4">
                 {/* Kelola Kategori */}
                 <div className="p-3 bg-secondary/10 rounded-xl border border-secondary/30 space-y-2">
                   <Label className="text-xs uppercase tracking-wider font-black text-secondary-foreground">Kelola Kategori</Label>
@@ -571,8 +568,8 @@ export default function FinancialReport() {
                   </div>
                   );
                 })}
-              </CardContent>
-            </Card>
+              </div>
+            </CollapsibleSection>
 
             {/* Catatan + Action */}
             <Card className="glass-card">

@@ -12,6 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 import { AlertTriangle, Plus, FileText, History } from 'lucide-react';
 import SPGeneratorDialog from '@/components/SPGeneratorDialog';
+import { ShowMoreList } from '@/components/ShowMoreList';
 
 // Auto-determine SP status from total discipline points
 // >= 10 -> SP-3, >= 7 -> SP-2, >= 5 -> SP-1, else Non-SP
@@ -187,44 +188,46 @@ export default function PunishmentPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {records.map((r) => {
-                    const prof: any = profileFullMap.get(r.user_id);
-                    const showPrint = canManage && isSpStatus(r.new_sp_status);
-                    return (
-                      <tr key={r.id} className="border-b border-border/50 hover:bg-muted/30">
-                        <td className="p-3">{r.issued_date}</td>
-                        <td className="p-3">{prof?.full_name || '-'}</td>
-                        <td className="p-3"><Badge variant="destructive">+{r.points_added}</Badge></td>
-                        <td className="p-3">
-                          <Badge variant={isSpStatus(r.new_sp_status) ? 'destructive' : 'secondary'}>
-                            {r.new_sp_status}
-                          </Badge>
-                        </td>
-                        <td className="p-3 text-xs max-w-xs truncate">{r.reason}</td>
-                        {canManage && (
-                          <td className="p-3 text-right">
-                            {showPrint ? (
-                              <Button size="sm" variant="ghost" onClick={() => openGenerator({
-                                userId: r.user_id,
-                                name: prof?.full_name || '',
-                                position: prof?.job_title || '',
-                                points: prof?.discipline_points || r.points_added || 0,
-                                reason: r.reason,
-                                status: r.new_sp_status,
-                              })}>
-                                <FileText className="w-4 h-4 mr-1" /> Cetak SP
-                              </Button>
-                            ) : (
-                              <span className="text-xs text-muted-foreground">—</span>
-                            )}
+                  <ShowMoreList
+                    items={records}
+                    initial={5}
+                    emptyMessage="Belum ada data punishment."
+                    renderItem={(r) => {
+                      const prof: any = profileFullMap.get(r.user_id);
+                      const showPrint = canManage && isSpStatus(r.new_sp_status);
+                      return (
+                        <tr key={r.id} className="border-b border-border/50 hover:bg-muted/30">
+                          <td className="p-3">{r.issued_date}</td>
+                          <td className="p-3">{prof?.full_name || '-'}</td>
+                          <td className="p-3"><Badge variant="destructive">+{r.points_added}</Badge></td>
+                          <td className="p-3">
+                            <Badge variant={isSpStatus(r.new_sp_status) ? 'destructive' : 'secondary'}>
+                              {r.new_sp_status}
+                            </Badge>
                           </td>
-                        )}
-                      </tr>
-                    );
-                  })}
-                  {records.length === 0 && (
-                    <tr><td colSpan={canManage ? 6 : 5} className="p-8 text-center text-muted-foreground">Belum ada data punishment.</td></tr>
-                  )}
+                          <td className="p-3 text-xs max-w-xs truncate">{r.reason}</td>
+                          {canManage && (
+                            <td className="p-3 text-right">
+                              {showPrint ? (
+                                <Button size="sm" variant="ghost" onClick={() => openGenerator({
+                                  userId: r.user_id,
+                                  name: prof?.full_name || '',
+                                  position: prof?.job_title || '',
+                                  points: prof?.discipline_points || r.points_added || 0,
+                                  reason: r.reason,
+                                  status: r.new_sp_status,
+                                })}>
+                                  <FileText className="w-4 h-4 mr-1" /> Cetak SP
+                                </Button>
+                              ) : (
+                                <span className="text-xs text-muted-foreground">—</span>
+                              )}
+                            </td>
+                          )}
+                        </tr>
+                      );
+                    }}
+                  />
                 </tbody>
               </table>
             </div>
@@ -250,21 +253,23 @@ export default function PunishmentPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {spHistory.map((h) => {
-                    const prof: any = profileFullMap.get(h.user_id);
-                    return (
-                      <tr key={h.id} className="border-b border-border/50 hover:bg-muted/30">
-                        <td className="p-3">{h.issued_date}</td>
-                        <td className="p-3">{prof?.full_name || '-'}</td>
-                        <td className="p-3"><Badge variant="destructive">{h.sp_level}</Badge></td>
-                        <td className="p-3">{h.total_points}</td>
-                        <td className="p-3 text-xs max-w-xs truncate">{h.reason}</td>
-                      </tr>
-                    );
-                  })}
-                  {spHistory.length === 0 && (
-                    <tr><td colSpan={5} className="p-8 text-center text-muted-foreground">Belum ada SP yang diterbitkan.</td></tr>
-                  )}
+                  <ShowMoreList
+                    items={spHistory}
+                    initial={5}
+                    emptyMessage="Belum ada SP yang diterbitkan."
+                    renderItem={(h) => {
+                      const prof: any = profileFullMap.get(h.user_id);
+                      return (
+                        <tr key={h.id} className="border-b border-border/50 hover:bg-muted/30">
+                          <td className="p-3">{h.issued_date}</td>
+                          <td className="p-3">{prof?.full_name || '-'}</td>
+                          <td className="p-3"><Badge variant="destructive">{h.sp_level}</Badge></td>
+                          <td className="p-3">{h.total_points}</td>
+                          <td className="p-3 text-xs max-w-xs truncate">{h.reason}</td>
+                        </tr>
+                      );
+                    }}
+                  />
                 </tbody>
               </table>
             </div>

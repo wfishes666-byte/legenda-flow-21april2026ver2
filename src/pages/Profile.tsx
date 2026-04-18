@@ -15,6 +15,7 @@ import { Badge as StatusBadge } from '@/components/ui/badge';
 import { format } from 'date-fns';
 import { id as idLocale } from 'date-fns/locale';
 import { useNavigate } from 'react-router-dom';
+import { ShowMoreList } from '@/components/ShowMoreList';
 
 interface Profile {
   full_name: string;
@@ -401,22 +402,25 @@ export default function ProfilePage() {
           </CardHeader>
           <CardContent className="p-3 md:p-0">
             {/* Mobile card view */}
-            <div className="space-y-2 md:hidden">
-              {cashbonRecords.map((r) => (
-                <div key={r.id} className="rounded-lg border border-border bg-card p-3">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0">
-                      <p className="text-xs text-muted-foreground">{format(new Date(r.request_date), 'dd MMM yyyy')}</p>
-                      <p className="font-semibold text-sm mt-0.5">Rp {(r.amount || 0).toLocaleString('id-ID')}</p>
+            <div className="md:hidden">
+              <ShowMoreList
+                items={cashbonRecords}
+                initial={5}
+                emptyMessage="Belum ada pengajuan cashbon."
+                wrapper={(children) => <div className="space-y-2">{children}</div>}
+                renderItem={(r) => (
+                  <div key={r.id} className="rounded-lg border border-border bg-card p-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="text-xs text-muted-foreground">{format(new Date(r.request_date), 'dd MMM yyyy')}</p>
+                        <p className="font-semibold text-sm mt-0.5">Rp {(r.amount || 0).toLocaleString('id-ID')}</p>
+                      </div>
+                      <StatusBadge variant={cashbonStatusVariant(r.status)} className="shrink-0">{r.status}</StatusBadge>
                     </div>
-                    <StatusBadge variant={cashbonStatusVariant(r.status)} className="shrink-0">{r.status}</StatusBadge>
+                    {r.notes && <p className="text-xs text-muted-foreground mt-2 break-words">{r.notes}</p>}
                   </div>
-                  {r.notes && <p className="text-xs text-muted-foreground mt-2 break-words">{r.notes}</p>}
-                </div>
-              ))}
-              {cashbonRecords.length === 0 && (
-                <p className="text-center text-muted-foreground text-sm py-6">Belum ada pengajuan cashbon.</p>
-              )}
+                )}
+              />
             </div>
             {/* Desktop table */}
             <div className="hidden md:block overflow-x-auto">
@@ -430,23 +434,21 @@ export default function ProfilePage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {cashbonRecords.map((r) => (
-                    <tr key={r.id} className="border-b border-border/50 hover:bg-muted/30">
-                      <td className="p-3">{format(new Date(r.request_date), 'dd MMM yyyy')}</td>
-                      <td className="p-3 font-medium">Rp {(r.amount || 0).toLocaleString('id-ID')}</td>
-                      <td className="p-3">
-                        <StatusBadge variant={cashbonStatusVariant(r.status)}>{r.status}</StatusBadge>
-                      </td>
-                      <td className="p-3 text-xs text-muted-foreground">{r.notes || '-'}</td>
-                    </tr>
-                  ))}
-                  {cashbonRecords.length === 0 && (
-                    <tr>
-                      <td colSpan={4} className="p-8 text-center text-muted-foreground">
-                        Belum ada pengajuan cashbon.
-                      </td>
-                    </tr>
-                  )}
+                  <ShowMoreList
+                    items={cashbonRecords}
+                    initial={8}
+                    emptyMessage="Belum ada pengajuan cashbon."
+                    renderItem={(r) => (
+                      <tr key={r.id} className="border-b border-border/50 hover:bg-muted/30">
+                        <td className="p-3">{format(new Date(r.request_date), 'dd MMM yyyy')}</td>
+                        <td className="p-3 font-medium">Rp {(r.amount || 0).toLocaleString('id-ID')}</td>
+                        <td className="p-3">
+                          <StatusBadge variant={cashbonStatusVariant(r.status)}>{r.status}</StatusBadge>
+                        </td>
+                        <td className="p-3 text-xs text-muted-foreground">{r.notes || '-'}</td>
+                      </tr>
+                    )}
+                  />
                 </tbody>
               </table>
             </div>
