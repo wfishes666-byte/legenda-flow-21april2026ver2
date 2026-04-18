@@ -5,12 +5,12 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
-import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { ShieldCheck, Loader2 } from 'lucide-react';
+import { ShieldCheck } from 'lucide-react';
 import { AppRole, useAuth } from '@/hooks/useAuth';
-import { MENU_GROUPS } from '@/lib/menuRegistry';
 import { useMenuPermissions } from '@/hooks/useMenuPermissions';
+import CustomRolesTab from '@/components/role-mgmt/CustomRolesTab';
+import MenuPermissionsTab from '@/components/role-mgmt/MenuPermissionsTab';
 
 interface UserWithRole {
   user_id: string;
@@ -28,15 +28,21 @@ const ROLES: { value: AppRole; label: string; description: string }[] = [
   { value: 'staff', label: 'Staff', description: 'Akses dasar' },
 ];
 
+const roleBadgeVariant = (role: string): any => {
+  if (role === 'admin') return 'destructive';
+  if (role === 'management') return 'default';
+  if (role === 'pic') return 'secondary';
+  return 'outline';
+};
+
 export default function RoleManagement() {
   const { toast } = useToast();
   const { role: currentRole } = useAuth();
   const canManage = currentRole === 'admin';
-  const { rows: permRows, isEnabled, refetch: refetchPerms } = useMenuPermissions();
+  const { customRoles, isEnabled, getPerm, refetch: refetchPerms } = useMenuPermissions();
   const [users, setUsers] = useState<UserWithRole[]>([]);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState<string | null>(null);
-  const [savingPerm, setSavingPerm] = useState<string | null>(null);
 
   const fetchUsers = async () => {
     setLoading(true);
@@ -62,7 +68,7 @@ export default function RoleManagement() {
 
   const handleRoleChange = async (userId: string, newRole: AppRole) => {
     if (!canManage) {
-      toast({ title: 'Akses ditolak', description: 'Hanya admin/management yang dapat mengubah role.', variant: 'destructive' });
+      toast({ title: 'Akses ditolak', description: 'Hanya admin yang dapat mengubah role.', variant: 'destructive' });
       return;
     }
     setUpdating(userId);
@@ -82,50 +88,22 @@ export default function RoleManagement() {
     }
   };
 
-  const handleTogglePerm = async (role: AppRole, menuKey: string, enabled: boolean) => {
-    if (!canManage) return;
-    const cellKey = `${role}::${menuKey}`;
-    setSavingPerm(cellKey);
-    const existing = permRows.find((r) => r.role === role && r.menu_key === menuKey);
-    if (existing) {
-      const { error } = await supabase
-        .from('role_menu_permissions')
-        .update({ enabled })
-        .eq('role', role)
-        .eq('menu_key', menuKey);
-      if (error) toast({ title: 'Gagal', description: error.message, variant: 'destructive' });
-    } else {
-      const { error } = await supabase
-        .from('role_menu_permissions')
-        .insert({ role, menu_key: menuKey, enabled });
-      if (error) toast({ title: 'Gagal', description: error.message, variant: 'destructive' });
-    }
-    await refetchPerms();
-    setSavingPerm(null);
-  };
-
-  const roleBadgeVariant = (role: AppRole) => {
-    if (role === 'admin') return 'destructive';
-    if (role === 'management') return 'default';
-    if (role === 'pic') return 'secondary';
-    return 'outline';
-  };
-
   return (
     <AppLayout>
-      <div className="max-w-6xl mx-auto space-y-6 pt-12 md:pt-0">
+      <div className="max-w-7xl mx-auto space-y-6 pt-12 md:pt-0">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold flex items-center gap-3 font-sans">
             <ShieldCheck className="w-7 h-7" /> Kelola Role & Akses
           </h1>
           <p className="text-muted-foreground mt-1">
-            {canManage ? 'Atur role karyawan & menu yang ditampilkan untuk tiap role' : 'Lihat hak akses (hanya admin/management yang dapat mengubah)'}
+            {canManage ? 'Atur role karyawan, role kustom, & menu yang ditampilkan untuk tiap role' : 'Lihat hak akses (hanya admin yang dapat mengubah)'}
           </p>
         </div>
 
         <Tabs defaultValue="users" className="space-y-4">
           <TabsList>
             <TabsTrigger value="users">Role Karyawan</TabsTrigger>
+            <TabsTrigger value="custom">Role Kustom</TabsTrigger>
             <TabsTrigger value="menus">Akses Menu per Role</TabsTrigger>
           </TabsList>
 
@@ -188,72 +166,27 @@ export default function RoleManagement() {
                     </tbody>
                   </table>
                 </div>
+                <p className="text-xs text-muted-foreground mt-4">
+                  Catatan: penugasan role kustom ke karyawan akan tersedia di pembaruan selanjutnya. Saat ini role kustom dipakai untuk mengatur template akses menu.
+                </p>
               </CardContent>
             </Card>
           </TabsContent>
 
+          <TabsContent value="custom">
+            <CustomRolesTab customRoles={customRoles} canManage={canManage} onChanged={refetchPerms} />
+          </TabsContent>
+
           <TabsContent value="menus">
-            <Card className="glass-card">
-              <CardContent className="p-4 md:p-6 space-y-6">
-                <p className="text-sm text-muted-foreground">
-                  Centang menu yang ingin ditampilkan untuk tiap role. Perubahan langsung berlaku setelah refresh.
-                </p>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm border-collapse">
-                    <thead className="sticky top-0 bg-background">
-                      <tr className="border-b border-border">
-                        <th className="text-left p-3 font-medium min-w-[260px]">Menu</th>
-                        {ROLES.map((r) => (
-                          <th key={r.value} className="p-3 font-medium text-center">
-                            <Badge variant={roleBadgeVariant(r.value)}>{r.label}</Badge>
-                          </th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {MENU_GROUPS.flatMap((group) => [
-                        <tr key={`g-${group.key}`} className="bg-muted/30">
-                          <td colSpan={ROLES.length + 1} className="p-2 px-3 font-semibold text-xs uppercase tracking-wide text-muted-foreground">
-                            <span className="inline-flex items-center gap-2">
-                              <group.icon className="w-3.5 h-3.5" />
-                              {group.label}
-                            </span>
-                          </td>
-                        </tr>,
-                        ...group.items.map((item) => (
-                          <tr key={item.key} className="border-b border-border/50 hover:bg-muted/20">
-                            <td className="p-3 pl-6">
-                              <div className="flex items-center gap-2">
-                                <item.icon className="w-4 h-4 text-muted-foreground" />
-                                <span>{item.label}</span>
-                              </div>
-                              <code className="text-[10px] text-muted-foreground/70">{item.key}</code>
-                            </td>
-                            {ROLES.map((r) => {
-                              const cellKey = `${r.value}::${item.key}`;
-                              const checked = isEnabled(r.value, item.key);
-                              return (
-                                <td key={r.value} className="p-3 text-center">
-                                  {savingPerm === cellKey ? (
-                                    <Loader2 className="w-4 h-4 animate-spin mx-auto text-muted-foreground" />
-                                  ) : (
-                                    <Switch
-                                      checked={checked}
-                                      onCheckedChange={(v) => handleTogglePerm(r.value, item.key, v)}
-                                      disabled={!canManage}
-                                    />
-                                  )}
-                                </td>
-                              );
-                            })}
-                          </tr>
-                        )),
-                      ])}
-                    </tbody>
-                  </table>
-                </div>
-              </CardContent>
-            </Card>
+            <MenuPermissionsTab
+              builtInRoles={ROLES.map(({ value, label }) => ({ value, label }))}
+              customRoles={customRoles}
+              canManage={canManage}
+              isEnabled={isEnabled}
+              getPerm={getPerm}
+              refetch={refetchPerms}
+              roleBadgeVariant={roleBadgeVariant}
+            />
           </TabsContent>
         </Tabs>
       </div>

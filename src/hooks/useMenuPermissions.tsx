@@ -4,38 +4,72 @@ import { ALL_MENU_ITEMS } from '@/lib/menuRegistry';
 import type { AppRole } from '@/hooks/useAuth';
 
 export interface MenuPermissionRow {
-  role: AppRole;
+  role: AppRole | null;
+  role_code: string | null;
   menu_key: string;
   enabled: boolean;
+  can_create: boolean;
+  can_edit: boolean;
+  can_delete: boolean;
 }
 
-/**
- * Returns a map of "role::menu_key" -> enabled.
- * Falls back to defaultRoles when no row exists for that (role, menu_key).
- */
+export interface CustomRole {
+  id: string;
+  code: string;
+  name: string;
+  description: string;
+}
+
 export function useMenuPermissions() {
   const [rows, setRows] = useState<MenuPermissionRow[]>([]);
+  const [customRoles, setCustomRoles] = useState<CustomRole[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const fetchPerms = useCallback(async () => {
+  const fetchAll = useCallback(async () => {
     setLoading(true);
-    const { data } = await supabase.from('role_menu_permissions').select('role, menu_key, enabled');
-    setRows((data as MenuPermissionRow[]) || []);
+    const [{ data: perms }, { data: customs }] = await Promise.all([
+      supabase.from('role_menu_permissions').select('role, role_code, menu_key, enabled, can_create, can_edit, can_delete'),
+      supabase.from('custom_roles' as any).select('id, code, name, description').order('created_at'),
+    ]);
+    setRows(((perms as unknown) as MenuPermissionRow[]) || []);
+    setCustomRoles(((customs as unknown) as CustomRole[]) || []);
     setLoading(false);
   }, []);
 
-  useEffect(() => { fetchPerms(); }, [fetchPerms]);
+  useEffect(() => { fetchAll(); }, [fetchAll]);
 
-  const isEnabled = useCallback(
-    (role: AppRole, menuKey: string): boolean => {
-      const row = rows.find((r) => r.role === role && r.menu_key === menuKey);
-      if (row) return row.enabled;
-      // fallback to default registry
-      const item = ALL_MENU_ITEMS.find((i) => i.key === menuKey);
-      return item ? item.defaultRoles.includes(role) : false;
-    },
+  const findRow = useCallback(
+    (role: AppRole | string, menuKey: string, isCustom: boolean) =>
+      rows.find((r) =>
+        isCustom ? r.role_code === role && r.menu_key === menuKey : r.role === role && r.menu_key === menuKey
+      ),
     [rows]
   );
 
-  return { rows, isEnabled, loading, refetch: fetchPerms };
+  const isEnabled = useCallback(
+    (role: AppRole | string, menuKey: string, isCustom = false): boolean => {
+      const row = findRow(role, menuKey, isCustom);
+      if (row) return row.enabled;
+      if (isCustom) return false;
+      const item = ALL_MENU_ITEMS.find((i) => i.key === menuKey);
+      return item ? item.defaultRoles.includes(role as AppRole) : false;
+    },
+    [findRow]
+  );
+
+  const getPerm = useCallback(
+    (role: AppRole | string, menuKey: string, perm: 'can_create' | 'can_edit' | 'can_delete', isCustom = false): boolean => {
+      const row = findRow(role, menuKey, isCustom);
+      if (row) return row[perm];
+      // Defaults: built-in admin/management get all CRUD; pic gets create+edit; others none
+      if (!isCustom) {
+        if (role === 'admin' || role === 'management') return true;
+        if (role === 'pic' && perm !== 'can_delete') return true;
+      }
+      return false;
+    },
+    [findRow]
+  );
+
+  return { rows, customRoles, isEnabled, getPerm, loading, refetch: fetchAll };
 }
