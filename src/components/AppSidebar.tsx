@@ -1,30 +1,6 @@
-import { useAuth, AppRole } from '@/hooks/useAuth';
+import { useAuth } from '@/hooks/useAuth';
 import { useNavigate, useLocation } from 'react-router-dom';
-import {
-  Users,
-  ClipboardList,
-  CalendarCheck,
-  Banknote,
-  AlertTriangle,
-  CalendarDays,
-  DollarSign,
-  FileText,
-  TrendingUp,
-  Package,
-  ShoppingCart,
-  Beaker,
-  Send,
-  Megaphone,
-  UserCircle,
-  LogOut,
-  BarChart3,
-  Menu,
-  ChevronDown,
-  ShieldCheck,
-  Activity,
-  Camera,
-  Settings as SettingsIcon,
-} from 'lucide-react';
+import { LogOut, Menu, ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { useState } from 'react';
@@ -32,113 +8,21 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import ThemeToggle from './ThemeToggle';
 import logoKop from '@/assets/logo-kop.png';
 import { useAppSettings } from '@/hooks/useAppSettings';
-
-interface NavItem {
-  to: string;
-  icon: any;
-  label: string;
-  roles: AppRole[];
-}
-
-interface NavGroup {
-  label: string;
-  icon: any;
-  roles: AppRole[];
-  items: NavItem[];
-}
-
-const navGroups: NavGroup[] = [
-  {
-    label: 'Dashboard',
-    icon: BarChart3,
-    roles: ['management'],
-    items: [
-      { to: '/dashboard', icon: BarChart3, label: 'Dashboard Analytics', roles: ['management'] },
-    ],
-  },
-  {
-    label: 'Personalia',
-    icon: Users,
-    roles: ['admin', 'management', 'pic', 'crew', 'stockman', 'staff'],
-    items: [
-      { to: '/attendance/check-in', icon: Camera, label: 'Absen Sekarang (Selfie)', roles: ['management', 'pic', 'crew', 'stockman', 'staff'] },
-      { to: '/personalia/staff', icon: Users, label: 'Data Karyawan', roles: ['management', 'pic'] },
-      { to: '/personalia/performance', icon: ClipboardList, label: 'Penilaian Kinerja', roles: ['management', 'pic'] },
-      { to: '/personalia/attendance', icon: CalendarCheck, label: 'Rekapan Absensi', roles: ['management', 'pic'] },
-      { to: '/personalia/cashbon', icon: Banknote, label: 'Cashbon', roles: ['management', 'pic', 'crew', 'stockman', 'staff'] },
-      { to: '/personalia/punishment', icon: AlertTriangle, label: 'Punishment & SP', roles: ['management', 'pic'] },
-      { to: '/personalia/leave', icon: CalendarDays, label: 'Verifikasi Cuti', roles: ['management', 'pic'] },
-      { to: '/personalia/payroll', icon: DollarSign, label: 'Payroll', roles: ['management', 'pic'] },
-      { to: '/activity-log', icon: Activity, label: 'Log Kegiatan', roles: ['management'] },
-      { to: '/profile', icon: UserCircle, label: 'Profil Saya', roles: ['management', 'pic', 'crew', 'stockman', 'staff'] },
-    ],
-  },
-  {
-    label: 'Finance',
-    icon: TrendingUp,
-    roles: ['management', 'pic'],
-    items: [
-      { to: '/finance/daily-recap', icon: FileText, label: 'Rekapan Laporan Harian', roles: ['management', 'pic'] },
-      { to: '/finance/profit-loss', icon: TrendingUp, label: 'Laporan Laba Rugi', roles: ['management', 'pic'] },
-      { to: '/finance/invoice', icon: FileText, label: 'Invoice', roles: ['management', 'pic'] },
-    ],
-  },
-  {
-    label: 'Stok & Inventaris',
-    icon: Package,
-    roles: ['management', 'pic', 'stockman', 'staff'],
-    items: [
-      { to: '/inventory/daily-stock', icon: Package, label: 'Input Stok Harian', roles: ['management', 'pic', 'stockman', 'staff'] },
-      { to: '/inventory/shopping-list', icon: ShoppingCart, label: 'Rekomendasi Belanja', roles: ['management', 'pic', 'stockman'] },
-      { to: '/inventory/material-control', icon: Beaker, label: 'Kontrol Bahan Baku', roles: ['management', 'pic', 'stockman'] },
-    ],
-  },
-  {
-    label: 'Laporan Harian',
-    icon: Send,
-    roles: ['management', 'pic', 'crew', 'stockman', 'staff'],
-    items: [
-      { to: '/daily-report', icon: Send, label: 'Input Laporan Closing', roles: ['management', 'pic', 'crew', 'stockman', 'staff'] },
-    ],
-  },
-  {
-    label: 'Marketing',
-    icon: Megaphone,
-    roles: ['management', 'pic'],
-    items: [
-      { to: '/marketing/content-plan', icon: Megaphone, label: 'Content Plan', roles: ['management', 'pic'] },
-    ],
-  },
-  {
-    label: 'Kelola Role & Akses',
-    icon: ShieldCheck,
-    roles: ['admin', 'management'],
-    items: [
-      { to: '/personalia/roles', icon: ShieldCheck, label: 'Kelola Role & Akses', roles: ['admin', 'management'] },
-    ],
-  },
-  {
-    label: 'Pengaturan',
-    icon: SettingsIcon,
-    roles: ['management'],
-    items: [
-      { to: '/settings', icon: SettingsIcon, label: 'Pengaturan Tampilan', roles: ['management'] },
-    ],
-  },
-];
+import { MENU_GROUPS } from '@/lib/menuRegistry';
+import { useMenuPermissions } from '@/hooks/useMenuPermissions';
 
 export default function AppSidebar() {
   const { role, signOut } = useAuth();
   const { settings } = useAppSettings();
+  const { isEnabled } = useMenuPermissions();
   const navigate = useNavigate();
   const location = useLocation();
   const [open, setOpen] = useState(false);
 
-  const visibleGroups = navGroups
-    .filter((g) => role && g.roles.includes(role))
+  const visibleGroups = MENU_GROUPS
     .map((g) => ({
       ...g,
-      items: g.items.filter((item) => role && item.roles.includes(role)),
+      items: g.items.filter((item) => role && isEnabled(role, item.key)),
     }))
     .filter((g) => g.items.length > 0);
 
@@ -195,7 +79,7 @@ export default function AppSidebar() {
             }
 
             return (
-              <Collapsible key={group.label} defaultOpen={isGroupActive}>
+              <Collapsible key={group.key} defaultOpen={isGroupActive}>
                 <CollapsibleTrigger className="w-full flex items-center justify-between gap-3 px-4 py-2.5 rounded-lg text-sm font-medium text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground transition-colors">
                   <span className="flex items-center gap-3">
                     <group.icon className="w-4 h-4" />
