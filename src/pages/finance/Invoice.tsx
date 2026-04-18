@@ -341,6 +341,21 @@ export default function InvoicePage() {
                     </SelectContent>
                   </Select>
                 </div>
+                <div className="ml-auto">
+                  <ExportButtons
+                    filename={`rekap-invoice-${filterMonth}`}
+                    title={`Rekap Invoice - ${filterMonth}`}
+                    subtitle={filterOutlet === 'all' ? 'Semua Outlet' : outlets.find(o => o.id === filterOutlet)?.name}
+                    orientation="landscape"
+                    columns={[
+                      { header: 'Tanggal', accessor: (r: any) => format(new Date(r.invoice_date), 'dd/MM/yyyy') },
+                      { header: 'Outlet', accessor: 'outlet_name' as any },
+                      { header: 'Item', accessor: (r: any) => (r.items || []).map((i: any) => `${i.qty}x ${i.item_name}`).join('; ') },
+                      { header: 'Total', accessor: (r: any) => formatRpExport(r.total) },
+                    ]}
+                    rows={invoices}
+                  />
+                </div>
               </CardContent>
             </Card>
 
