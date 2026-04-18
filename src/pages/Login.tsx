@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardDescription } from '@/components/ui/
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
-import logoKop from '@/assets/logo-kop.png';
+import logoKop from '@/assets/logo-dua-legenda.png';
 import logoFloating from '@/assets/logo-floating.png';
 
 const months = [
@@ -65,16 +65,20 @@ export default function Login() {
 
   return (
     <div className="relative min-h-screen flex items-center justify-center p-4 bg-neutral-950 overflow-hidden">
-      <img
-        src={logoFloating}
-        alt=""
-        aria-hidden="true"
-        className="pointer-events-none select-none absolute inset-0 m-auto w-[80%] max-w-[600px] opacity-10 animate-pulse"
-        style={{ animationDuration: '4s' }}
-      />
-      <Card className="relative w-full max-w-md shadow-xl border-border/50 z-10">
+      {/* Floating logo background - rotates slowly + pulses */}
+      <div className="pointer-events-none absolute top-1/2 left-1/2 w-[90%] max-w-[700px] aspect-square animate-float-rotate">
+        <img
+          src={logoFloating}
+          alt=""
+          aria-hidden="true"
+          className="w-full h-full object-contain animate-float-slow"
+          style={{ filter: 'drop-shadow(0 0 40px hsl(var(--primary) / 0.5))' }}
+        />
+      </div>
+
+      <Card className="relative w-full max-w-md shadow-2xl border-border/50 z-10 backdrop-blur-sm bg-card/95">
         <CardHeader className="text-center space-y-3">
-          <div className="flex justify-center">
+          <div className="flex justify-center bg-white rounded-lg p-4">
             <img src={logoKop} alt="Dua Legenda" className="max-h-20 w-auto object-contain" />
           </div>
           <CardDescription className="text-muted-foreground">
