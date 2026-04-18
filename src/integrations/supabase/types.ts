@@ -261,6 +261,36 @@ export type Database = {
         }
         Relationships: []
       }
+      custom_roles: {
+        Row: {
+          code: string
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       daily_sales: {
         Row: {
           created_at: string | null
@@ -908,26 +938,38 @@ export type Database = {
       }
       role_menu_permissions: {
         Row: {
+          can_create: boolean
+          can_delete: boolean
+          can_edit: boolean
           enabled: boolean
           id: string
           menu_key: string
-          role: Database["public"]["Enums"]["app_role"]
+          role: Database["public"]["Enums"]["app_role"] | null
+          role_code: string | null
           updated_at: string
           updated_by: string | null
         }
         Insert: {
+          can_create?: boolean
+          can_delete?: boolean
+          can_edit?: boolean
           enabled?: boolean
           id?: string
           menu_key: string
-          role: Database["public"]["Enums"]["app_role"]
+          role?: Database["public"]["Enums"]["app_role"] | null
+          role_code?: string | null
           updated_at?: string
           updated_by?: string | null
         }
         Update: {
+          can_create?: boolean
+          can_delete?: boolean
+          can_edit?: boolean
           enabled?: boolean
           id?: string
           menu_key?: string
-          role?: Database["public"]["Enums"]["app_role"]
+          role?: Database["public"]["Enums"]["app_role"] | null
+          role_code?: string | null
           updated_at?: string
           updated_by?: string | null
         }
