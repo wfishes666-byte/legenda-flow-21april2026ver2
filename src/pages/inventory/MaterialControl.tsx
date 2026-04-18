@@ -120,7 +120,7 @@ export default function MaterialControlPage() {
 
   return (
     <AppLayout>
-      <div className="max-w-4xl mx-auto space-y-6 pt-12 md:pt-0">
+      <div className="max-w-4xl mx-auto space-y-6">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <h1 className="text-2xl md:text-3xl font-bold font-sans flex items-center gap-3">
             <Beaker className="w-7 h-7" /> Kontrol Bahan Baku

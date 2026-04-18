@@ -1,9 +1,9 @@
 import { useAuth } from '@/hooks/useAuth';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { LogOut, Menu, ChevronDown } from 'lucide-react';
+import { LogOut, Menu, ChevronDown, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import ThemeToggle from './ThemeToggle';
 import logoKop from '@/assets/logo-kop.png';
@@ -19,6 +19,21 @@ export default function AppSidebar() {
   const location = useLocation();
   const [open, setOpen] = useState(false);
 
+  // Auto close drawer on route change (mobile)
+  useEffect(() => {
+    setOpen(false);
+  }, [location.pathname]);
+
+  // Lock body scroll when mobile drawer open
+  useEffect(() => {
+    if (open) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => { document.body.style.overflow = ''; };
+  }, [open]);
+
   const visibleGroups = MENU_GROUPS
     .map((g) => ({
       ...g,
@@ -28,23 +43,48 @@ export default function AppSidebar() {
 
   return (
     <>
-      <button
-        className="fixed top-4 left-4 z-50 md:hidden p-2 rounded-lg bg-primary text-primary-foreground shadow-lg"
-        onClick={() => setOpen(!open)}
+      {/* Mobile top bar with hamburger - always visible on small screens */}
+      <div
+        className="fixed top-0 left-0 right-0 z-40 md:hidden flex items-center justify-between px-3 h-14 bg-sidebar text-sidebar-foreground border-b border-sidebar-border shadow-sm"
+        style={{ paddingTop: 'env(safe-area-inset-top)' }}
       >
-        <Menu className="w-5 h-5" />
-      </button>
+        <button
+          className="p-2 -ml-1 rounded-lg hover:bg-sidebar-accent/50 active:scale-95 transition"
+          onClick={() => setOpen(true)}
+          aria-label="Buka menu"
+        >
+          <Menu className="w-5 h-5" />
+        </button>
+        <img
+          src={settings.customLogoUrl || logoKop}
+          alt="Logo"
+          className="h-8 w-auto object-contain"
+        />
+        <div className="w-9" />
+      </div>
 
       {open && (
-        <div className="fixed inset-0 bg-foreground/20 z-40 md:hidden" onClick={() => setOpen(false)} />
+        <div
+          className="fixed inset-0 bg-foreground/40 backdrop-blur-sm z-40 md:hidden animate-in fade-in"
+          onClick={() => setOpen(false)}
+        />
       )}
 
       <aside
         className={cn(
-          'fixed top-0 left-0 z-40 h-full w-64 bg-sidebar text-sidebar-foreground flex flex-col transition-transform duration-300 md:translate-x-0 overflow-y-auto',
+          'fixed top-0 left-0 z-50 h-[100dvh] w-72 max-w-[85vw] bg-sidebar text-sidebar-foreground flex flex-col transition-transform duration-300 md:w-64 md:translate-x-0 md:z-40 overflow-y-auto overscroll-contain shadow-2xl md:shadow-none',
           open ? 'translate-x-0' : '-translate-x-full'
         )}
+        style={{ paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)' }}
       >
+        {/* Mobile-only close button inside drawer */}
+        <button
+          className="md:hidden absolute top-3 right-3 z-10 p-2 rounded-lg bg-sidebar-accent/40 hover:bg-sidebar-accent text-sidebar-foreground"
+          onClick={() => setOpen(false)}
+          aria-label="Tutup menu"
+        >
+          <X className="w-4 h-4" />
+        </button>
         <div className="p-6 border-b border-sidebar-border bg-sidebar-accent/30 flex flex-col items-center">
           <img
             src={settings.customLogoUrl || logoKop}

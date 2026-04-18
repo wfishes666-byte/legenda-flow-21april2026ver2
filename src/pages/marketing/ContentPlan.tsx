@@ -112,7 +112,7 @@ export default function ContentPlanPage() {
 
   return (
     <AppLayout>
-      <div className="max-w-4xl mx-auto space-y-6 pt-12 md:pt-0">
+      <div className="max-w-4xl mx-auto space-y-6">
         <h1 className="text-2xl md:text-3xl font-bold font-sans flex items-center gap-3">
           <Megaphone className="w-7 h-7" /> Content Plan
         </h1>

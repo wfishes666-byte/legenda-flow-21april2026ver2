@@ -112,7 +112,7 @@ export default function PunishmentPage() {
 
   return (
     <AppLayout>
-      <div className="max-w-4xl mx-auto space-y-6 pt-12 md:pt-0">
+      <div className="max-w-4xl mx-auto space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <h1 className="text-2xl md:text-3xl font-bold font-sans flex items-center gap-3">
             <AlertTriangle className="w-7 h-7" /> Punishment & SP

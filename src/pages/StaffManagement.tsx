@@ -99,7 +99,7 @@ export default function StaffManagement() {
 
   return (
     <AppLayout>
-      <div className="max-w-4xl mx-auto space-y-6 pt-12 md:pt-0">
+      <div className="max-w-4xl mx-auto space-y-6">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold flex items-center gap-3 font-sans">
             <Users className="w-7 h-7" /> Kelola Karyawan
