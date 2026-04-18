@@ -170,11 +170,17 @@ export default function Login() {
                 <div className="space-y-2">
                   <Label>Cabang / Outlet Tempat Bekerja</Label>
                   <Select value={outletId} onValueChange={setOutletId}>
-                    <SelectTrigger><SelectValue placeholder={outlets.length === 0 ? 'Memuat cabang...' : 'Pilih cabang'} /></SelectTrigger>
-                    <SelectContent>
-                      {outlets.map((o) => (
-                        <SelectItem key={o.id} value={o.id}>{o.name}</SelectItem>
-                      ))}
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder={outlets.length === 0 ? 'Memuat cabang...' : 'Pilih cabang'} />
+                    </SelectTrigger>
+                    <SelectContent className="z-[200] max-h-60" position="popper" sideOffset={4}>
+                      {outlets.length === 0 ? (
+                        <div className="px-3 py-2 text-sm text-muted-foreground">Tidak ada cabang tersedia</div>
+                      ) : (
+                        outlets.map((o) => (
+                          <SelectItem key={o.id} value={o.id}>{o.name}</SelectItem>
+                        ))
+                      )}
                     </SelectContent>
                   </Select>
                 </div>
