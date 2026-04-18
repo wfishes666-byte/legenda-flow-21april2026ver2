@@ -13,6 +13,7 @@ import { Badge } from '@/components/ui/badge';
 import { AlertTriangle, Plus, FileText, History } from 'lucide-react';
 import SPGeneratorDialog from '@/components/SPGeneratorDialog';
 import { ShowMoreList } from '@/components/ShowMoreList';
+import { useMenuPermissions } from '@/hooks/useMenuPermissions';
 
 // Auto-determine SP status from total discipline points
 // >= 10 -> SP-3, >= 7 -> SP-2, >= 5 -> SP-1, else Non-SP
@@ -29,7 +30,13 @@ const isSpStatus = (status?: string | null) =>
 export default function PunishmentPage() {
   const { user, role } = useAuth();
   const { toast } = useToast();
-  const canManage = role === 'management' || role === 'pic';
+  const { getPerm, customRoles } = useMenuPermissions();
+  const isCustom = !!role && customRoles.some((c) => c.code === role);
+  const canManage =
+    role === 'admin' ||
+    role === 'management' ||
+    role === 'pic' ||
+    (role ? getPerm(role, 'personalia/punishment', 'can_create', isCustom) : false);
   const [records, setRecords] = useState<any[]>([]);
   const [spHistory, setSpHistory] = useState<any[]>([]);
   const [profiles, setProfiles] = useState<any[]>([]);
