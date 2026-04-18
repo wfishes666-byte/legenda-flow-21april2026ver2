@@ -10,9 +10,10 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
-import { CalendarDays, Phone, MapPin, Briefcase, AlertTriangle, FileWarning, Clock, Banknote } from 'lucide-react';
+import { CalendarDays, Phone, MapPin, Briefcase, AlertTriangle, FileWarning, Clock, Banknote, Camera } from 'lucide-react';
 import { Badge as StatusBadge } from '@/components/ui/badge';
 import { format } from 'date-fns';
+import { useNavigate } from 'react-router-dom';
 
 interface Profile {
   full_name: string;
@@ -37,6 +38,7 @@ interface CashbonRecord {
 export default function ProfilePage() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [leaveOpen, setLeaveOpen] = useState(false);
   const [leaveForm, setLeaveForm] = useState({ start_date: '', end_date: '', reason: '' });
@@ -46,6 +48,19 @@ export default function ProfilePage() {
   const [cashbonForm, setCashbonForm] = useState({ amount: '', notes: '' });
   const [cashbonSubmitting, setCashbonSubmitting] = useState(false);
   const [cashbonRecords, setCashbonRecords] = useState<CashbonRecord[]>([]);
+  const [todayLogs, setTodayLogs] = useState<{ log_type: string; created_at: string; selfie_url: string }[]>([]);
+
+  const fetchTodayAttendance = async () => {
+    if (!user) return;
+    const start = new Date(); start.setHours(0, 0, 0, 0);
+    const { data } = await supabase
+      .from('attendance_logs')
+      .select('log_type, created_at, selfie_url')
+      .eq('user_id', user.id)
+      .gte('created_at', start.toISOString())
+      .order('created_at', { ascending: false });
+    if (data) setTodayLogs(data);
+  };
 
   const fetchCashbon = async () => {
     if (!user) return;
@@ -103,6 +118,7 @@ export default function ProfilePage() {
     };
     loadProfile();
     fetchCashbon();
+    fetchTodayAttendance();
   }, [user]);
 
   const handleLeaveSubmit = async (e: React.FormEvent) => {
