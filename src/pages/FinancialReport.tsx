@@ -621,12 +621,6 @@ export default function FinancialReport() {
                   <div className="font-bold uppercase border-b border-foreground inline-block mb-1">Penjualan</div>
                   <div className="flex justify-between"><span>Omzet (Dine In):</span><span>{formatRp(form.dine_in_omzet)}</span></div>
                   <div className="border-t border-dashed border-foreground my-2" />
-                  <div className="font-bold uppercase border-b border-foreground inline-block mb-1">Kas Masuk</div>
-                  <div className="flex justify-between"><span>Total Cash:</span><span>{formatRp(form.ending_physical_cash)}</span></div>
-                  <div className="flex justify-between"><span>Total QRIS:</span><span>{formatRp(form.ending_qris_cash)}</span></div>
-                  <div className="flex justify-between italic text-muted-foreground"><span>Modal Awal (-):</span><span>{formatRp(form.starting_cash)}</span></div>
-                  <div className="flex justify-between font-bold border-t border-foreground pt-1 mt-1"><span>TOTAL DIDAPAT:</span><span>{formatRp(totalIncome)}</span></div>
-                  <div className="border-t border-dashed border-foreground my-2" />
                   <div className="font-bold uppercase mb-1">Pengeluaran:</div>
                   {expenses.length > 0 ? expenses.map((e) => (
                     <div key={e.id} className="flex justify-between text-[11px]">
@@ -635,11 +629,19 @@ export default function FinancialReport() {
                     </div>
                   )) : <div className="text-center italic opacity-40 py-2">Belum ada pengeluaran</div>}
                   <div className="flex justify-between font-bold mt-2 text-destructive"><span>TOTAL KELUAR:</span><span>{formatRp(totalExpense)}</span></div>
-                  <div className="flex justify-between font-bold text-[15px] mt-2"><span>LABA KOTOR:</span><span>{formatRp(grossProfit)}</span></div>
+                  <div className="flex justify-between font-bold text-[13px] mt-1"><span>PENJUALAN BERSIH:</span><span>{formatRp(grossProfit)}</span></div>
+                  <div className="text-[10px] italic text-muted-foreground">(Omzet Dine In - Pengeluaran)</div>
+                  <div className="border-t border-dashed border-foreground my-2" />
+                  <div className="font-bold uppercase border-b border-foreground inline-block mb-1">Pendapatan (Kas Didapat)</div>
+                  <div className="flex justify-between"><span>Total Cash:</span><span>{formatRp(form.ending_physical_cash)}</span></div>
+                  <div className="flex justify-between"><span>Total QRIS:</span><span>{formatRp(form.ending_qris_cash)}</span></div>
+                  <div className="flex justify-between italic text-muted-foreground"><span>Modal Awal (-):</span><span>{formatRp(form.starting_cash)}</span></div>
+                  <div className="flex justify-between font-bold border-t border-foreground pt-1 mt-1"><span>TOTAL DIDAPAT:</span><span>{formatRp(totalIncome)}</span></div>
                   <div className="border-t border-dashed border-foreground my-2" />
                   <div className={`flex justify-between font-bold ${gap < 0 ? 'text-destructive' : gap > 0 ? 'text-success' : ''}`}>
                     <span>SELISIH:</span><span>{formatRp(gap)}</span>
                   </div>
+                  <div className="text-[10px] italic text-muted-foreground">(Pendapatan - Penjualan Bersih)</div>
                   <div className="mt-3 pt-2 border-t border-dotted border-muted-foreground">
                     <div className="font-bold text-[11px] uppercase mb-1 text-accent">Online Food:</div>
                     <div className="flex justify-between text-[11px]"><span>ShopeeFood:</span><span>{formatRp(form.shopeefood_sales)}</span></div>
