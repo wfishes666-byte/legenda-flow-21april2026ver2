@@ -65,21 +65,29 @@ export default function Login() {
 
   return (
     <div className="relative min-h-screen flex items-center justify-center p-4 bg-neutral-950 overflow-hidden">
-      {/* Floating logo background - rotates slowly + pulses */}
-      <div className="pointer-events-none absolute top-1/2 left-1/2 w-[90%] max-w-[700px] aspect-square animate-float-rotate">
-        <img
-          src={logoFloating}
-          alt=""
-          aria-hidden="true"
-          className="w-full h-full object-contain animate-float-slow"
-          style={{ filter: 'drop-shadow(0 0 40px hsl(var(--primary) / 0.5))' }}
-        />
+      {/* Floating logo background - pinball motion + pulse */}
+      <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+        <div className="animate-pinball">
+          <img
+            src={logoFloating}
+            alt=""
+            aria-hidden="true"
+            className="w-[500px] max-w-[80vw] h-auto object-contain animate-float-slow"
+            style={{
+              filter: 'brightness(0) invert(1) drop-shadow(0 0 30px hsl(var(--primary) / 0.8)) drop-shadow(0 0 60px hsl(var(--primary) / 0.5))',
+            }}
+          />
+        </div>
       </div>
 
       <Card className="relative w-full max-w-md shadow-2xl border-border/50 z-10 backdrop-blur-sm bg-card/95">
         <CardHeader className="text-center space-y-3">
-          <div className="flex justify-center bg-white rounded-lg p-4">
-            <img src={logoKop} alt="Dua Legenda" className="max-h-20 w-auto object-contain" />
+          <div className="flex justify-center">
+            <img
+              src={logoKop}
+              alt="Dua Legenda"
+              className="max-h-20 w-auto object-contain dark:invert"
+            />
           </div>
           <CardDescription className="text-muted-foreground">
             {isSignUp ? 'Buat akun baru' : 'Masuk ke akun Anda'}
