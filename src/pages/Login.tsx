@@ -8,6 +8,8 @@ import { Card, CardContent, CardHeader, CardDescription } from '@/components/ui/
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
+import logoKop from '@/assets/logo-kop.png';
+import logoFloating from '@/assets/logo-floating.png';
 
 const months = [
 'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
