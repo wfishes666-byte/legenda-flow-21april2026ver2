@@ -65,14 +65,14 @@ export default function Login() {
 
   return (
     <div className="relative min-h-screen flex items-center justify-center p-4 bg-neutral-950 overflow-hidden">
-      {/* Floating logo background - pinball motion + pulse */}
-      <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+      {/* Floating logo background - pinball motion across whole screen */}
+      <div className="pointer-events-none fixed inset-0 flex items-center justify-center z-0 overflow-hidden">
         <div className="animate-pinball">
           <img
             src={logoFloating}
             alt=""
             aria-hidden="true"
-            className="w-[500px] max-w-[80vw] h-auto object-contain animate-float-slow"
+            className="w-[400px] max-w-[60vw] h-auto object-contain animate-float-slow"
             style={{
               filter: 'brightness(0) invert(1) drop-shadow(0 0 30px hsl(var(--primary) / 0.8)) drop-shadow(0 0 60px hsl(var(--primary) / 0.5))',
             }}
