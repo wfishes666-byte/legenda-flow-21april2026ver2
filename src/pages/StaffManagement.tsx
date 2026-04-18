@@ -59,14 +59,18 @@ export default function StaffManagement() {
     const { error } = await supabase
       .from('profiles')
       .update({
+        nickname: editProfile.nickname,
         phone: editProfile.phone,
         address: editProfile.address,
+        date_of_birth: editProfile.date_of_birth,
         job_title: editProfile.job_title,
         discipline_points: editProfile.discipline_points,
         warning_letter_status: editProfile.warning_letter_status,
         employment_status: editProfile.employment_status,
         contract_end_date: editProfile.contract_end_date,
         outlet_id: editProfile.outlet_id,
+        nik: editProfile.nik,
+        join_date: editProfile.join_date,
         base_salary: Math.round(editProfile.base_salary || 0),
         transport_allowance: Math.round(editProfile.transport_allowance || 0),
         meal_allowance: Math.round(editProfile.meal_allowance || 0),
