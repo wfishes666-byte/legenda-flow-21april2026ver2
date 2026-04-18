@@ -443,7 +443,20 @@ export default function InvoicePage() {
             </Card>
 
             <Card className="glass-card">
-              <CardContent className="pt-6">
+              <CardHeader className="flex flex-row items-center justify-between gap-3">
+                <CardTitle className="text-base">Daftar Katalog ({catalog.length})</CardTitle>
+                <ExportButtons
+                  filename="katalog-item"
+                  title="Katalog Item"
+                  columns={[
+                    { header: 'Nama', accessor: 'name' },
+                    { header: 'Satuan', accessor: 'unit' },
+                    { header: 'Harga Default', accessor: (r) => formatRpExport(Number(r.default_price)) },
+                  ]}
+                  rows={catalog}
+                />
+              </CardHeader>
+              <CardContent className="pt-2">
                 {catalog.length === 0 ? (
                   <p className="text-sm text-muted-foreground text-center py-6">Belum ada item katalog.</p>
                 ) : (
