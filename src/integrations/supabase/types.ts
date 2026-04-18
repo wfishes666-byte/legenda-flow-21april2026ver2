@@ -754,7 +754,10 @@ export type Database = {
           full_name: string
           id: string
           job_title: string | null
+          join_date: string | null
           meal_allowance: number | null
+          nickname: string | null
+          nik: string | null
           outlet_id: string | null
           phone: string | null
           transport_allowance: number | null
@@ -773,7 +776,10 @@ export type Database = {
           full_name?: string
           id?: string
           job_title?: string | null
+          join_date?: string | null
           meal_allowance?: number | null
+          nickname?: string | null
+          nik?: string | null
           outlet_id?: string | null
           phone?: string | null
           transport_allowance?: number | null
@@ -792,7 +798,10 @@ export type Database = {
           full_name?: string
           id?: string
           job_title?: string | null
+          join_date?: string | null
           meal_allowance?: number | null
+          nickname?: string | null
+          nik?: string | null
           outlet_id?: string | null
           phone?: string | null
           transport_allowance?: number | null
