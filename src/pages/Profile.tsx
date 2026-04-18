@@ -222,48 +222,48 @@ export default function ProfilePage() {
         </div>
 
         <Card className="glass-card">
-          <CardHeader className="flex flex-row items-center justify-between">
-            <div>
-              <CardTitle className="font-heading text-xl">{profile.full_name || 'Belum diisi'}</CardTitle>
-              <p className="text-sm text-muted-foreground mt-1">{user?.email}</p>
+          <CardHeader className="flex flex-row items-start justify-between gap-3">
+            <div className="min-w-0 flex-1">
+              <CardTitle className="font-heading text-lg md:text-xl break-words">{profile.full_name || 'Belum diisi'}</CardTitle>
+              <p className="text-xs md:text-sm text-muted-foreground mt-1 break-all">{user?.email}</p>
             </div>
-            <Badge variant={profile.employment_status === 'Permanent' ? 'default' : 'secondary'}>
+            <Badge variant={profile.employment_status === 'Permanent' ? 'default' : 'secondary'} className="shrink-0">
               {profile.employment_status}
             </Badge>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {infoItems.map((item) => (
                 <div key={item.label} className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
-                  <item.icon className="w-5 h-5 text-primary mt-0.5" />
-                  <div>
+                  <item.icon className="w-5 h-5 text-primary mt-0.5 shrink-0" />
+                  <div className="min-w-0 flex-1">
                     <p className="text-xs text-muted-foreground">{item.label}</p>
-                    <p className="text-sm font-medium">{item.value}</p>
+                    <p className="text-sm font-medium break-words">{item.value}</p>
                   </div>
                 </div>
               ))}
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 border-t border-border">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-4 border-t border-border">
               <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
-                <AlertTriangle className="w-5 h-5 text-warning" />
-                <div>
+                <AlertTriangle className="w-5 h-5 text-warning shrink-0" />
+                <div className="min-w-0">
                   <p className="text-xs text-muted-foreground">Poin Disiplin</p>
                   <p className="text-sm font-bold">{profile.discipline_points}</p>
                 </div>
               </div>
               <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
-                <FileWarning className="w-5 h-5 text-destructive" />
-                <div>
+                <FileWarning className="w-5 h-5 text-destructive shrink-0" />
+                <div className="min-w-0">
                   <p className="text-xs text-muted-foreground">Status SP</p>
-                  <p className="text-sm font-medium">{profile.warning_letter_status}</p>
+                  <p className="text-sm font-medium break-words">{profile.warning_letter_status}</p>
                 </div>
               </div>
               <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
-                <Clock className="w-5 h-5 text-primary" />
-                <div>
+                <Clock className="w-5 h-5 text-primary shrink-0" />
+                <div className="min-w-0">
                   <p className="text-xs text-muted-foreground">Akhir Kontrak</p>
-                  <p className="text-sm font-medium">
+                  <p className="text-sm font-medium break-words">
                     {profile.contract_end_date ? format(new Date(profile.contract_end_date), 'dd MMM yyyy') : '-'}
                   </p>
                 </div>
@@ -398,8 +398,27 @@ export default function ProfilePage() {
               <Banknote className="w-5 h-5 text-primary" /> Riwayat Cashbon Saya
             </CardTitle>
           </CardHeader>
-          <CardContent className="p-0">
-            <div className="overflow-x-auto">
+          <CardContent className="p-3 md:p-0">
+            {/* Mobile card view */}
+            <div className="space-y-2 md:hidden">
+              {cashbonRecords.map((r) => (
+                <div key={r.id} className="rounded-lg border border-border bg-card p-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="text-xs text-muted-foreground">{format(new Date(r.request_date), 'dd MMM yyyy')}</p>
+                      <p className="font-semibold text-sm mt-0.5">Rp {(r.amount || 0).toLocaleString('id-ID')}</p>
+                    </div>
+                    <StatusBadge variant={cashbonStatusVariant(r.status)} className="shrink-0">{r.status}</StatusBadge>
+                  </div>
+                  {r.notes && <p className="text-xs text-muted-foreground mt-2 break-words">{r.notes}</p>}
+                </div>
+              ))}
+              {cashbonRecords.length === 0 && (
+                <p className="text-center text-muted-foreground text-sm py-6">Belum ada pengajuan cashbon.</p>
+              )}
+            </div>
+            {/* Desktop table */}
+            <div className="hidden md:block overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-border text-left text-muted-foreground">
