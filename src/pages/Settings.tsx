@@ -34,7 +34,7 @@ function ColorPicker({ label, value, onChange }: { label: string; value: string;
 }
 
 export default function SettingsPage() {
-  const { role } = useAuth();
+  const { role, loading } = useAuth();
   const { settings, updateSetting, resetSettings } = useAppSettings();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
@@ -45,6 +45,17 @@ export default function SettingsPage() {
   const [confirmPw, setConfirmPw] = useState('');
   const [showPw, setShowPw] = useState(false);
   const [savingPw, setSavingPw] = useState(false);
+
+  // Tunggu role ter-load dulu sebelum cek akses (mencegah redirect prematur)
+  if (loading || role === null) {
+    return (
+      <AppLayout>
+        <div className="flex items-center justify-center min-h-[40vh] text-muted-foreground">
+          Memuat pengaturan...
+        </div>
+      </AppLayout>
+    );
+  }
 
   if (role !== 'management' && role !== 'admin') {
     return <Navigate to="/profile" replace />;
