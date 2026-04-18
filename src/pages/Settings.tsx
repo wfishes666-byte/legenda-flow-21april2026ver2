@@ -261,13 +261,13 @@ export default function SettingsPage() {
               type="button"
               onClick={handleDragonClick}
               aria-label="Ganti password admin (rahasia)"
-              title="🐉 Klik naga — fitur tersembunyi admin"
-              className="group relative flex items-center gap-2 px-3 py-2 rounded-lg border border-dashed border-border/40 hover:border-primary hover:bg-primary/5 transition-all focus:outline-none focus:ring-2 focus:ring-primary"
+              title="🐉"
+              className="group bg-transparent border-0 p-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-md"
             >
               <img
                 src={nagaBg}
                 alt=""
-                className="h-10 w-10 object-contain opacity-50 group-hover:opacity-100 transition-opacity pointer-events-none select-none"
+                className="h-10 w-10 object-contain opacity-40 group-hover:opacity-80 transition-opacity pointer-events-none select-none"
               />
             </button>
           ) : (
