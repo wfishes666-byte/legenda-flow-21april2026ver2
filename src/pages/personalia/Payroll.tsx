@@ -15,9 +15,14 @@ import { DollarSign, Plus, Calculator, Printer } from 'lucide-react';
 const months = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
 
 export default function PayrollPage() {
-  const { user, role } = useAuth();
+  const { user, role, isCustom } = useAuth() as any;
+  const { getPerm } = useMenuPermissions();
   const { toast } = useToast();
-  const canManage = role === 'management';
+  const canManage =
+    role === 'admin' ||
+    role === 'management' ||
+    role === 'pic' ||
+    (role ? getPerm(role, 'personalia.payroll', 'can_create', isCustom) : false);
   const [records, setRecords] = useState<any[]>([]);
   const [profiles, setProfiles] = useState<any[]>([]);
   const [form, setForm] = useState({
