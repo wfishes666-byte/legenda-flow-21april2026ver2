@@ -8,6 +8,8 @@ import { Card, CardContent, CardHeader, CardDescription } from '@/components/ui/
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
+import logoKop from '@/assets/logo-kop.png';
+import logoFloating from '@/assets/logo-floating.png';
 
 const months = [
 'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
@@ -62,10 +64,19 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-neutral-950">
-      <Card className="w-full max-w-md shadow-xl border-border/50">
-        <CardHeader className="text-center space-y-2">
-          <h1 className="text-3xl font-bold text-primary font-sans">Dua Legenda Hub </h1>
+    <div className="relative min-h-screen flex items-center justify-center p-4 bg-neutral-950 overflow-hidden">
+      <img
+        src={logoFloating}
+        alt=""
+        aria-hidden="true"
+        className="pointer-events-none select-none absolute inset-0 m-auto w-[80%] max-w-[600px] opacity-10 animate-pulse"
+        style={{ animationDuration: '4s' }}
+      />
+      <Card className="relative w-full max-w-md shadow-xl border-border/50 z-10">
+        <CardHeader className="text-center space-y-3">
+          <div className="flex justify-center">
+            <img src={logoKop} alt="Dua Legenda" className="max-h-20 w-auto object-contain" />
+          </div>
           <CardDescription className="text-muted-foreground">
             {isSignUp ? 'Buat akun baru' : 'Masuk ke akun Anda'}
           </CardDescription>
