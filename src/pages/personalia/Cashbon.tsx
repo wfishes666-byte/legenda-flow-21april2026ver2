@@ -100,7 +100,6 @@ export default function CashbonPage() {
                   placeholder="Rp 0"
                   value={displayAmount}
                   onChange={(e) => handleAmountChange(e.target.value)}
-                  required
                 />
               </div>
               <div className="flex-1 space-y-2">
