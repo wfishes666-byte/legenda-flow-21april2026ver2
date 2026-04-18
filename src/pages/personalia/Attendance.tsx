@@ -455,14 +455,20 @@ function RecapTab({ outletId, profiles }: { outletId: string; profiles: Profile[
   );
 }
 
-function SelfieLogsTab({ outletId, profiles }: { outletId: string; profiles: Profile[] }) {
+function SelfieLogsTab({ outlets, allProfiles }: { outlets: { id: string; name: string }[]; allProfiles: Profile[] }) {
   const [logs, setLogs] = useState<any[]>([]);
   const [date, setDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [userFilter, setUserFilter] = useState<string>('all');
+  const [outletFilter, setOutletFilter] = useState<string>('all');
+
+  const visibleProfiles = useMemo(
+    () => outletFilter === 'all' ? allProfiles : allProfiles.filter((p) => p.outlet_id === outletFilter),
+    [allProfiles, outletFilter]
+  );
 
   useEffect(() => {
-    if (!outletId || profiles.length === 0) { setLogs([]); return; }
-    const userIds = profiles.map((p) => p.user_id);
+    if (visibleProfiles.length === 0) { setLogs([]); return; }
+    const userIds = visibleProfiles.map((p) => p.user_id);
     const start = `${date}T00:00:00`;
     const end = `${date}T23:59:59`;
     supabase
@@ -473,14 +479,36 @@ function SelfieLogsTab({ outletId, profiles }: { outletId: string; profiles: Pro
       .in('user_id', userIds)
       .order('created_at', { ascending: false })
       .then(({ data }) => setLogs(data || []));
-  }, [outletId, date, profiles]);
+  }, [date, visibleProfiles]);
 
-  const profileMap = new Map(profiles.map((p) => [p.user_id, p]));
+  useEffect(() => { setUserFilter('all'); }, [outletFilter]);
+
+  const profileMap = new Map(allProfiles.map((p) => [p.user_id, p]));
   const filtered = userFilter === 'all' ? logs : logs.filter((l) => l.user_id === userFilter);
 
   return (
     <Card className="glass-card">
       <CardContent className="p-4 space-y-4">
+        <Tabs value={outletFilter} onValueChange={setOutletFilter}>
+          <TabsList className="flex-wrap h-auto bg-transparent border-b border-border w-full justify-start rounded-none p-0">
+            <TabsTrigger
+              value="all"
+              className="data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none data-[state=active]:bg-transparent data-[state=active]:shadow-none"
+            >
+              Semua Outlet
+            </TabsTrigger>
+            {outlets.map((o) => (
+              <TabsTrigger
+                key={o.id}
+                value={o.id}
+                className="data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none data-[state=active]:bg-transparent data-[state=active]:shadow-none"
+              >
+                {o.name}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </Tabs>
+
         <div className="flex flex-wrap gap-2 items-center">
           <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="w-44" />
           <select
@@ -489,7 +517,7 @@ function SelfieLogsTab({ outletId, profiles }: { outletId: string; profiles: Pro
             className="h-10 px-3 rounded-md border border-input bg-background text-sm"
           >
             <option value="all">Semua karyawan</option>
-            {profiles.map((p) => <option key={p.user_id} value={p.user_id}>{p.full_name}</option>)}
+            {visibleProfiles.map((p) => <option key={p.user_id} value={p.user_id}>{p.full_name}</option>)}
           </select>
           <span className="text-sm text-muted-foreground ml-auto">{filtered.length} log</span>
         </div>
