@@ -110,6 +110,14 @@ const navGroups: NavGroup[] = [
     ],
   },
   {
+    label: 'Kelola Role & Akses',
+    icon: ShieldCheck,
+    roles: ['admin', 'management'],
+    items: [
+      { to: '/personalia/roles', icon: ShieldCheck, label: 'Kelola Role & Akses', roles: ['admin', 'management'] },
+    ],
+  },
+  {
     label: 'Pengaturan',
     icon: SettingsIcon,
     roles: ['management'],
