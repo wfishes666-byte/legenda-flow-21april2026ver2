@@ -511,7 +511,19 @@ export default function InvoicePage() {
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               <Card className="glass-card">
-                <CardHeader><CardTitle className="text-base">Per Outlet</CardTitle></CardHeader>
+                <CardHeader className="flex flex-row items-center justify-between gap-3">
+                  <CardTitle className="text-base">Per Outlet</CardTitle>
+                  <ExportButtons
+                    filename={`ringkasan-invoice-per-outlet-${filterMonth}`}
+                    title={`Ringkasan Invoice per Outlet - ${filterMonth}`}
+                    columns={[
+                      { header: 'Outlet', accessor: (r: any) => r[0] },
+                      { header: 'Total', accessor: (r: any) => formatRpExport(r[1]) },
+                      { header: '%', accessor: (r: any) => (summary.grand > 0 ? ((r[1] / summary.grand) * 100).toFixed(1) + '%' : '0%') },
+                    ]}
+                    rows={summary.perOutlet}
+                  />
+                </CardHeader>
                 <CardContent>
                   {summary.perOutlet.length === 0 ? (
                     <p className="text-sm text-muted-foreground py-4 text-center">Tidak ada data.</p>
@@ -535,7 +547,19 @@ export default function InvoicePage() {
               </Card>
 
               <Card className="glass-card">
-                <CardHeader><CardTitle className="text-base">Per Item</CardTitle></CardHeader>
+                <CardHeader className="flex flex-row items-center justify-between gap-3">
+                  <CardTitle className="text-base">Per Item</CardTitle>
+                  <ExportButtons
+                    filename={`ringkasan-invoice-per-item-${filterMonth}`}
+                    title={`Ringkasan Invoice per Item - ${filterMonth}`}
+                    columns={[
+                      { header: 'Item', accessor: (r: any) => r[0] },
+                      { header: 'Qty', accessor: (r: any) => `${r[1].qty} ${r[1].unit}` },
+                      { header: 'Total', accessor: (r: any) => formatRpExport(r[1].total) },
+                    ]}
+                    rows={summary.perItem}
+                  />
+                </CardHeader>
                 <CardContent>
                   {summary.perItem.length === 0 ? (
                     <p className="text-sm text-muted-foreground py-4 text-center">Tidak ada data.</p>
