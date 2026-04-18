@@ -31,8 +31,8 @@ export function useMenuPermissions() {
       supabase.from('role_menu_permissions').select('role, role_code, menu_key, enabled, can_create, can_edit, can_delete'),
       supabase.from('custom_roles' as any).select('id, code, name, description').order('created_at'),
     ]);
-    setRows((perms as MenuPermissionRow[]) || []);
-    setCustomRoles((customs as CustomRole[]) || []);
+    setRows(((perms as unknown) as MenuPermissionRow[]) || []);
+    setCustomRoles(((customs as unknown) as CustomRole[]) || []);
     setLoading(false);
   }, []);
 
