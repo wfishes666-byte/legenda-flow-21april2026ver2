@@ -10,8 +10,9 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { TrendingUp, TrendingDown, Download, Save } from 'lucide-react';
+import { TrendingUp, TrendingDown, Download, Save, Plus, X } from 'lucide-react';
 import { format, endOfMonth } from 'date-fns';
+import { id as localeId } from 'date-fns/locale';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
@@ -39,6 +40,10 @@ export default function ProfitLossPage() {
   const [pendingChanges, setPendingChanges] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState('');
+  const [balancingRows, setBalancingRows] = useState<{ id: string; label: string; amount: number }[]>([
+    { id: '1', label: 'Kas Tunai Aktual', amount: 0 },
+    { id: '2', label: 'Transfer Aktual', amount: 0 },
+  ]);
 
   const fetchCategories = async () => {
     const { data } = await supabase.from('profit_loss_categories').select('*').order('type').order('name');
@@ -272,99 +277,155 @@ export default function ProfitLossPage() {
 
           {/* TAB 2: LAPORAN L/R */}
           <TabsContent value="lr" className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <Card className="glass-card">
-                <CardContent className="p-5 text-center">
-                  <p className="text-xs text-muted-foreground">Total Pendapatan</p>
-                  <p className="text-xl font-bold text-primary">{formatRp(totalIncome)}</p>
-                </CardContent>
-              </Card>
-              <Card className="glass-card">
-                <CardContent className="p-5 text-center">
-                  <p className="text-xs text-muted-foreground">Total Pengeluaran</p>
-                  <p className="text-xl font-bold text-destructive">{formatRp(totalExpenses)}</p>
-                </CardContent>
-              </Card>
-              <Card className="glass-card">
-                <CardContent className="p-5 text-center">
-                  <p className="text-xs text-muted-foreground">Laba/Rugi Bersih</p>
-                  <p className={`text-xl font-bold ${netProfit >= 0 ? 'text-primary' : 'text-destructive'}`}>
-                    {formatRp(netProfit)}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Tabel Laba Rugi */}
+              <Card className="lg:col-span-2 overflow-hidden glass-card border-0 p-0">
+                <div className="bg-destructive text-destructive-foreground py-5 text-center">
+                  <h2 className="text-xl font-bold">Laporan Laba Rugi</h2>
+                  <p className="text-sm opacity-90">
+                    Per {format(new Date(`${month}-01`), 'MMMM yyyy', { locale: localeId })}
                   </p>
+                </div>
+                <div className="divide-y">
+                  <div className="flex items-center justify-between px-5 py-3 font-semibold text-primary">
+                    <span>Total Pendapatan</span>
+                    <span>{formatRp(totalIncome)}</span>
+                  </div>
+                  {Object.entries(expensesByCategory)
+                    .sort((a, b) => b[1] - a[1])
+                    .map(([cat, amt]) => {
+                      const pct = totalIncome > 0 ? (amt / totalIncome) * 100 : 0;
+                      const isUncategorized = cat === 'Belum Dikategorikan';
+                      return (
+                        <div
+                          key={cat}
+                          className={`grid grid-cols-[1fr_auto_70px] items-center px-5 py-3 gap-4 ${
+                            isUncategorized ? 'bg-yellow-500/10' : ''
+                          }`}
+                        >
+                          <span className="text-sm text-destructive/90">{cat}</span>
+                          <span className="text-sm text-destructive/90 text-right">{formatRp(amt)}</span>
+                          <span className="text-xs text-muted-foreground text-right">
+                            {pct.toFixed(2).replace('.', ',')}%
+                          </span>
+                        </div>
+                      );
+                    })}
+                  <div className="grid grid-cols-[1fr_auto_70px] items-center px-5 py-3 gap-4 font-semibold text-destructive">
+                    <span>Total Pengeluaran</span>
+                    <span className="text-right">{formatRp(totalExpenses)}</span>
+                    <span className="text-xs text-right">
+                      {(totalIncome > 0 ? (totalExpenses / totalIncome) * 100 : 0).toFixed(2).replace('.', ',')}%
+                    </span>
+                  </div>
+                  <div
+                    className={`grid grid-cols-[1fr_auto_70px] items-center px-5 py-4 gap-4 font-bold ${
+                      netProfit >= 0 ? 'bg-green-500/30 text-foreground' : 'bg-destructive/20 text-destructive'
+                    }`}
+                  >
+                    <span>Laba Bersih</span>
+                    <span className="text-right">{formatRp(netProfit)}</span>
+                    <span className="text-sm text-right">
+                      {(totalIncome > 0 ? (netProfit / totalIncome) * 100 : 0).toFixed(2).replace('.', ',')}%
+                    </span>
+                  </div>
+                </div>
+              </Card>
+
+              {/* Panel Balancing */}
+              <Card className="glass-card h-fit">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base">BALANCING</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="flex justify-between items-center pb-2 border-b">
+                    <span className="text-sm text-muted-foreground">Laba Bersih Sistem</span>
+                    <span className="font-semibold text-primary">{formatRp(netProfit)}</span>
+                  </div>
+                  <div className="grid grid-cols-[1fr_auto_24px] gap-2 text-xs uppercase text-muted-foreground">
+                    <span>Keterangan</span>
+                    <span className="text-right pr-1">Nominal</span>
+                    <span></span>
+                  </div>
+                  {balancingRows.map((row, idx) => (
+                    <div key={row.id} className="grid grid-cols-[1fr_auto_24px] gap-2 items-center">
+                      <Input
+                        value={row.label}
+                        onChange={(e) => {
+                          const next = [...balancingRows];
+                          next[idx] = { ...row, label: e.target.value };
+                          setBalancingRows(next);
+                        }}
+                        className="h-9 text-sm"
+                      />
+                      <Input
+                        type="number"
+                        value={row.amount || ''}
+                        onChange={(e) => {
+                          const next = [...balancingRows];
+                          next[idx] = { ...row, amount: Number(e.target.value) || 0 };
+                          setBalancingRows(next);
+                        }}
+                        className="h-9 text-sm w-32 text-right"
+                        placeholder="Rp"
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7"
+                        onClick={() => setBalancingRows(balancingRows.filter((r) => r.id !== row.id))}
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </Button>
+                    </div>
+                  ))}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full border-dashed"
+                    onClick={() =>
+                      setBalancingRows([
+                        ...balancingRows,
+                        { id: Date.now().toString(), label: '', amount: 0 },
+                      ])
+                    }
+                  >
+                    <Plus className="w-4 h-4 mr-1" /> Tambah baris
+                  </Button>
+
+                  {(() => {
+                    const totalActual = balancingRows.reduce((s, r) => s + (r.amount || 0), 0);
+                    const selisih = totalActual - netProfit;
+                    return (
+                      <>
+                        <div className="flex justify-between items-center pt-2 border-t">
+                          <span className="text-sm font-semibold">Total Aktual</span>
+                          <span className="font-bold">{formatRp(totalActual)}</span>
+                        </div>
+                        <div
+                          className={`flex justify-between items-center p-3 rounded-md ${
+                            selisih === 0
+                              ? 'bg-primary/10 text-primary'
+                              : 'bg-destructive/10 text-destructive'
+                          }`}
+                        >
+                          <span className="text-sm font-semibold">Selisih</span>
+                          <span className="font-bold">{formatRp(selisih)}</span>
+                        </div>
+                        {selisih !== 0 && (
+                          <p className="text-xs text-muted-foreground text-center">
+                            {selisih > 0
+                              ? 'Kas aktual LEBIH dari laba sistem'
+                              : 'Kas aktual KURANG dari laba sistem'}
+                          </p>
+                        )}
+                      </>
+                    );
+                  })()}
                 </CardContent>
               </Card>
             </div>
-
-            <Card className="glass-card">
-              <CardHeader>
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <TrendingUp className="w-5 h-5 text-primary" /> Pendapatan Usaha
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                <div className="flex justify-between p-3 bg-muted/50 rounded-lg">
-                  <span className="text-sm">Penjualan Dine In / Offline</span>
-                  <span className="font-medium">{formatRp(incomeData.offline)}</span>
-                </div>
-                <div className="flex justify-between p-3 bg-muted/50 rounded-lg">
-                  <span className="text-sm">Penjualan Online Food</span>
-                  <span className="font-medium">{formatRp(incomeData.online)}</span>
-                </div>
-                <div className="flex justify-between p-3 bg-primary/10 rounded-lg border border-primary/20">
-                  <span className="text-sm font-semibold">Total Pendapatan</span>
-                  <span className="font-bold">{formatRp(totalIncome)}</span>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="glass-card">
-              <CardHeader>
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <TrendingDown className="w-5 h-5 text-destructive" /> Biaya / Pengeluaran per Akun
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                {Object.entries(expensesByCategory).length === 0 ? (
-                  <p className="text-sm text-muted-foreground">Belum ada pengeluaran.</p>
-                ) : (
-                  <>
-                    {Object.entries(expensesByCategory)
-                      .sort((a, b) => b[1] - a[1])
-                      .map(([cat, amt]) => {
-                        const pct = totalIncome > 0 ? (amt / totalIncome) * 100 : 0;
-                        const isUncategorized = cat === 'Belum Dikategorikan';
-                        return (
-                          <div
-                            key={cat}
-                            className={`flex justify-between items-center p-3 rounded-lg ${
-                              isUncategorized ? 'bg-yellow-500/10 border border-yellow-500/30' : 'bg-muted/50'
-                            }`}
-                          >
-                            <div className="flex flex-col">
-                              <span className="text-sm">{cat}</span>
-                              <span className="text-xs text-muted-foreground">{pct.toFixed(2)}% dari pendapatan</span>
-                            </div>
-                            <span className="font-medium text-destructive">{formatRp(amt)}</span>
-                          </div>
-                        );
-                      })}
-                    <div className="flex justify-between p-3 bg-destructive/10 rounded-lg border border-destructive/20">
-                      <span className="text-sm font-semibold">Total Pengeluaran</span>
-                      <span className="font-bold text-destructive">{formatRp(totalExpenses)}</span>
-                    </div>
-                  </>
-                )}
-              </CardContent>
-            </Card>
-
-            <Card className={`glass-card border-2 ${netProfit >= 0 ? 'border-primary/40' : 'border-destructive/40'}`}>
-              <CardContent className="p-5 flex justify-between items-center">
-                <span className="text-lg font-bold">LABA / RUGI BERSIH</span>
-                <span className={`text-2xl font-bold ${netProfit >= 0 ? 'text-primary' : 'text-destructive'}`}>
-                  {formatRp(netProfit)}
-                </span>
-              </CardContent>
-            </Card>
           </TabsContent>
         </Tabs>
       </div>
