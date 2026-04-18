@@ -211,46 +211,44 @@ export default function RoleManagement() {
                       </tr>
                     </thead>
                     <tbody>
-                      {MENU_GROUPS.map((group) => (
-                        <>
-                          <tr key={`g-${group.key}`} className="bg-muted/30">
-                            <td colSpan={ROLES.length + 1} className="p-2 px-3 font-semibold text-xs uppercase tracking-wide text-muted-foreground">
-                              <span className="inline-flex items-center gap-2">
-                                <group.icon className="w-3.5 h-3.5" />
-                                {group.label}
-                              </span>
+                      {MENU_GROUPS.flatMap((group) => [
+                        <tr key={`g-${group.key}`} className="bg-muted/30">
+                          <td colSpan={ROLES.length + 1} className="p-2 px-3 font-semibold text-xs uppercase tracking-wide text-muted-foreground">
+                            <span className="inline-flex items-center gap-2">
+                              <group.icon className="w-3.5 h-3.5" />
+                              {group.label}
+                            </span>
+                          </td>
+                        </tr>,
+                        ...group.items.map((item) => (
+                          <tr key={item.key} className="border-b border-border/50 hover:bg-muted/20">
+                            <td className="p-3 pl-6">
+                              <div className="flex items-center gap-2">
+                                <item.icon className="w-4 h-4 text-muted-foreground" />
+                                <span>{item.label}</span>
+                              </div>
+                              <code className="text-[10px] text-muted-foreground/70">{item.key}</code>
                             </td>
+                            {ROLES.map((r) => {
+                              const cellKey = `${r.value}::${item.key}`;
+                              const checked = isEnabled(r.value, item.key);
+                              return (
+                                <td key={r.value} className="p-3 text-center">
+                                  {savingPerm === cellKey ? (
+                                    <Loader2 className="w-4 h-4 animate-spin mx-auto text-muted-foreground" />
+                                  ) : (
+                                    <Switch
+                                      checked={checked}
+                                      onCheckedChange={(v) => handleTogglePerm(r.value, item.key, v)}
+                                      disabled={!canManage}
+                                    />
+                                  )}
+                                </td>
+                              );
+                            })}
                           </tr>
-                          {group.items.map((item) => (
-                            <tr key={item.key} className="border-b border-border/50 hover:bg-muted/20">
-                              <td className="p-3 pl-6">
-                                <div className="flex items-center gap-2">
-                                  <item.icon className="w-4 h-4 text-muted-foreground" />
-                                  <span>{item.label}</span>
-                                </div>
-                                <code className="text-[10px] text-muted-foreground/70">{item.key}</code>
-                              </td>
-                              {ROLES.map((r) => {
-                                const cellKey = `${r.value}::${item.key}`;
-                                const checked = isEnabled(r.value, item.key);
-                                return (
-                                  <td key={r.value} className="p-3 text-center">
-                                    {savingPerm === cellKey ? (
-                                      <Loader2 className="w-4 h-4 animate-spin mx-auto text-muted-foreground" />
-                                    ) : (
-                                      <Switch
-                                        checked={checked}
-                                        onCheckedChange={(v) => handleTogglePerm(r.value, item.key, v)}
-                                        disabled={!canManage}
-                                      />
-                                    )}
-                                  </td>
-                                );
-                              })}
-                            </tr>
-                          ))}
-                        </>
-                      ))}
+                        )),
+                      ])}
                     </tbody>
                   </table>
                 </div>
