@@ -1,0 +1,1 @@
+DROP POLICY IF EXISTS "Management can manage roles" ON public.user_roles;

@@ -31,7 +31,7 @@ const ROLES: { value: AppRole; label: string; description: string }[] = [
 export default function RoleManagement() {
   const { toast } = useToast();
   const { role: currentRole } = useAuth();
-  const canManage = currentRole === 'admin' || currentRole === 'management';
+  const canManage = currentRole === 'admin';
   const { rows: permRows, isEnabled, refetch: refetchPerms } = useMenuPermissions();
   const [users, setUsers] = useState<UserWithRole[]>([]);
   const [loading, setLoading] = useState(true);
