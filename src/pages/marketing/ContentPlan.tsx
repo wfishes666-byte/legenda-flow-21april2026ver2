@@ -30,10 +30,15 @@ const statusColors: Record<string, 'default' | 'secondary' | 'outline' | 'destru
 };
 
 export default function ContentPlanPage() {
-  const { user, role } = useAuth();
+  const { user, role, isCustom } = useAuth() as any;
+  const { getPerm } = useMenuPermissions();
   const { toast } = useToast();
-  const canManage = role === 'management';
-  const canEdit = role === 'management' || role === 'pic';
+  const canManage = role === 'admin' || role === 'management';
+  const canEdit =
+    role === 'admin' ||
+    role === 'management' ||
+    role === 'pic' ||
+    (role ? getPerm(role, 'marketing.content', 'can_create', isCustom) : false);
   const [records, setRecords] = useState<any[]>([]);
   const [form, setForm] = useState({ title: '', description: '', platform: 'instagram', scheduled_date: '', status: 'idea', rate_card: '' });
   const [submitting, setSubmitting] = useState(false);
