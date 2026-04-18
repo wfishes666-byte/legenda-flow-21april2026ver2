@@ -4,9 +4,7 @@ import AppLayout from '@/components/AppLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
-import { useAuth } from '@/hooks/useAuth';
 import {
   BarChart,
   Bar,
@@ -15,6 +13,8 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
+  LineChart,
+  Line,
 } from 'recharts';
 import {
   TrendingUp,
@@ -24,9 +24,6 @@ import {
   Calendar,
   Check,
   X,
-  Clock,
-  Wallet,
-  MapPin,
 } from 'lucide-react';
 import { format } from 'date-fns';
 
@@ -46,16 +43,6 @@ interface LeaveReq {
   profile_name?: string;
 }
 
-interface CashbonReq {
-  id: string;
-  user_id: string;
-  amount: number;
-  request_date: string;
-  notes: string | null;
-  status: string;
-  profile_name?: string;
-}
-
 interface LowStockItem {
   item_name: string;
   ending_stock: number;
@@ -63,78 +50,33 @@ interface LowStockItem {
 }
 
 interface StaffOverview {
-  user_id: string;
   full_name: string;
   discipline_points: number;
   warning_letter_status: string;
-  outlet_id: string | null;
 }
-
-interface AttendanceLogRow {
-  id: string;
-  user_id: string;
-  log_type: string;
-  created_at: string;
-  out_of_radius: boolean;
-  outlet_id: string | null;
-  profile_name?: string;
-}
-
-interface Outlet {
-  id: string;
-  name: string;
-}
-
-const ALL = '__all__';
 
 export default function DashboardPage() {
   const { toast } = useToast();
-  const { role } = useAuth();
-  const [outlets, setOutlets] = useState<Outlet[]>([]);
-  const [selectedOutlet, setSelectedOutlet] = useState<string>(ALL);
-
   const [financials, setFinancials] = useState<FinancialSummary[]>([]);
   const [leaveRequests, setLeaveRequests] = useState<LeaveReq[]>([]);
-  const [cashbonRequests, setCashbonRequests] = useState<CashbonReq[]>([]);
   const [lowStock, setLowStock] = useState<LowStockItem[]>([]);
   const [staff, setStaff] = useState<StaffOverview[]>([]);
-  const [attendanceLogs, setAttendanceLogs] = useState<AttendanceLogRow[]>([]);
   const [totals, setTotals] = useState({ totalIncome: 0, totalExpenses: 0 });
-
-  // Load outlets once
-  useEffect(() => {
-    supabase
-      .from('outlets')
-      .select('id, name')
-      .order('name')
-      .then(({ data }) => {
-        if (data) setOutlets(data);
-      });
-  }, []);
 
   useEffect(() => {
     fetchAll();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedOutlet]);
-
-  const applyOutletFilter = <T extends { outlet_id?: string | null }>(q: any) => {
-    if (selectedOutlet !== ALL) {
-      return q.eq('outlet_id', selectedOutlet);
-    }
-    return q;
-  };
+  }, []);
 
   const fetchAll = async () => {
     // Financial data
-    let reportsQuery = supabase
+    const { data: reports } = await supabase
       .from('financial_reports')
-      .select('id, report_date, daily_offline_income, online_delivery_sales, outlet_id')
+      .select('id, report_date, daily_offline_income, online_delivery_sales')
       .order('report_date', { ascending: true })
-      .limit(60);
-    if (selectedOutlet !== ALL) reportsQuery = reportsQuery.eq('outlet_id', selectedOutlet);
-    const { data: reports } = await reportsQuery;
+      .limit(30);
 
     if (reports) {
+      // Fetch expenses for each report
       const reportIds = reports.map((r) => r.id);
       const { data: expenseData } = await supabase
         .from('expense_items')
@@ -158,70 +100,34 @@ export default function DashboardPage() {
       setTotals({ totalIncome, totalExpenses });
     }
 
-    // Profiles map (for names + outlet filtering of person-based tables)
-    const { data: allProfiles } = await supabase
-      .from('profiles')
-      .select('user_id, full_name, discipline_points, warning_letter_status, outlet_id')
-      .order('discipline_points', { ascending: false });
-
-    const profileMap = new Map<string, StaffOverview>();
-    allProfiles?.forEach((p) => profileMap.set(p.user_id, p as StaffOverview));
-
-    const filteredStaff = (allProfiles || []).filter((p) =>
-      selectedOutlet === ALL ? true : p.outlet_id === selectedOutlet,
-    );
-    setStaff(filteredStaff as StaffOverview[]);
-
-    const userIdsInOutlet = filteredStaff.map((p) => p.user_id);
-
     // Leave requests
-    let leavesQuery = supabase
+    const { data: leaves } = await supabase
       .from('leave_requests')
       .select('*')
       .eq('status', 'pending')
       .order('created_at', { ascending: false });
-    if (selectedOutlet !== ALL) {
-      leavesQuery = leavesQuery.in('user_id', userIdsInOutlet.length ? userIdsInOutlet : ['none']);
-    }
-    const { data: leaves } = await leavesQuery;
-    if (leaves) {
-      setLeaveRequests(
-        leaves.map((l) => ({
-          ...l,
-          profile_name: profileMap.get(l.user_id)?.full_name || 'Unknown',
-        })),
-      );
-    }
 
-    // Cashbon requests
-    let cashbonQuery = supabase
-      .from('cashbon')
-      .select('*')
-      .eq('status', 'pending')
-      .order('created_at', { ascending: false });
-    if (selectedOutlet !== ALL) {
-      cashbonQuery = cashbonQuery.in(
-        'user_id',
-        userIdsInOutlet.length ? userIdsInOutlet : ['none'],
-      );
-    }
-    const { data: cashbons } = await cashbonQuery;
-    if (cashbons) {
-      setCashbonRequests(
-        cashbons.map((c) => ({
-          ...c,
-          profile_name: profileMap.get(c.user_id)?.full_name || 'Unknown',
-        })),
+    if (leaves) {
+      // Fetch profile names
+      const userIds = [...new Set(leaves.map((l) => l.user_id))];
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('user_id, full_name')
+        .in('user_id', userIds.length > 0 ? userIds : ['none']);
+
+      const nameMap = new Map<string, string>();
+      profiles?.forEach((p) => nameMap.set(p.user_id, p.full_name));
+
+      setLeaveRequests(
+        leaves.map((l) => ({ ...l, profile_name: nameMap.get(l.user_id) || 'Unknown' }))
       );
     }
 
     // Low stock
-    let invQuery = supabase
+    const { data: inventory } = await supabase
       .from('inventory')
       .select('*')
       .order('record_date', { ascending: false });
-    if (selectedOutlet !== ALL) invQuery = invQuery.eq('outlet_id', selectedOutlet);
-    const { data: inventory } = await invQuery;
 
     if (inventory) {
       const latestByItem = new Map<string, any>();
@@ -230,52 +136,30 @@ export default function DashboardPage() {
       });
       setLowStock(
         Array.from(latestByItem.values()).filter(
-          (item) => (item.ending_stock ?? 0) <= (item.minimum_threshold ?? 5),
-        ),
+          (item) => (item.ending_stock ?? 0) <= (item.minimum_threshold ?? 5)
+        )
       );
     }
 
-    // Attendance logs (recent 20)
-    let logsQuery = supabase
-      .from('attendance_logs')
-      .select('id, user_id, log_type, created_at, out_of_radius, outlet_id')
-      .order('created_at', { ascending: false })
-      .limit(20);
-    if (selectedOutlet !== ALL) logsQuery = logsQuery.eq('outlet_id', selectedOutlet);
-    const { data: logs } = await logsQuery;
-    if (logs) {
-      setAttendanceLogs(
-        logs.map((l) => ({
-          ...l,
-          profile_name: profileMap.get(l.user_id)?.full_name || 'Unknown',
-        })),
-      );
-    }
+    // Staff overview
+    const { data: profileData } = await supabase
+      .from('profiles')
+      .select('full_name, discipline_points, warning_letter_status')
+      .order('discipline_points', { ascending: false });
+
+    if (profileData) setStaff(profileData as StaffOverview[]);
   };
 
   const handleLeaveAction = async (id: string, status: 'approved' | 'rejected') => {
-    const { error } = await supabase.from('leave_requests').update({ status }).eq('id', id);
+    const { error } = await supabase
+      .from('leave_requests')
+      .update({ status })
+      .eq('id', id);
     if (error) {
       toast({ title: 'Gagal', description: error.message, variant: 'destructive' });
     } else {
-      toast({
-        title: 'Berhasil',
-        description: `Cuti ${status === 'approved' ? 'disetujui' : 'ditolak'}.`,
-      });
+      toast({ title: 'Berhasil', description: `Cuti ${status === 'approved' ? 'disetujui' : 'ditolak'}.` });
       setLeaveRequests((prev) => prev.filter((l) => l.id !== id));
-    }
-  };
-
-  const handleCashbonAction = async (id: string, status: 'approved' | 'rejected') => {
-    const { error } = await supabase.from('cashbon').update({ status }).eq('id', id);
-    if (error) {
-      toast({ title: 'Gagal', description: error.message, variant: 'destructive' });
-    } else {
-      toast({
-        title: 'Berhasil',
-        description: `Cashbon ${status === 'approved' ? 'disetujui' : 'ditolak'}.`,
-      });
-      setCashbonRequests((prev) => prev.filter((c) => c.id !== id));
     }
   };
 
@@ -287,36 +171,13 @@ export default function DashboardPage() {
     Pengeluaran: f.expenses,
   }));
 
-  const outletName =
-    selectedOutlet === ALL
-      ? 'Semua Cabang'
-      : outlets.find((o) => o.id === selectedOutlet)?.name || 'Cabang';
-
   return (
     <AppLayout>
       <div className="space-y-6 pt-12 md:pt-0">
-        <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-3">
-          <div>
-            <h1 className="font-heading text-2xl md:text-3xl font-bold">Dashboard Management</h1>
-            <p className="text-muted-foreground mt-1">
-              Ringkasan operasional Dua Legenda Grup — {outletName}
-            </p>
-          </div>
+        <div>
+          <h1 className="font-heading text-2xl md:text-3xl font-bold">Dashboard Management</h1>
+          <p className="text-muted-foreground mt-1">Ringkasan operasional Dua Legenda Grup</p>
         </div>
-
-        {/* Outlet Tabs */}
-        {outlets.length > 0 && (
-          <Tabs value={selectedOutlet} onValueChange={setSelectedOutlet} className="w-full">
-            <TabsList className="flex flex-wrap h-auto justify-start">
-              <TabsTrigger value={ALL}>Semua Cabang</TabsTrigger>
-              {outlets.map((o) => (
-                <TabsTrigger key={o.id} value={o.id}>
-                  {o.name}
-                </TabsTrigger>
-              ))}
-            </TabsList>
-          </Tabs>
-        )}
 
         {/* KPI Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -325,9 +186,7 @@ export default function DashboardPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-xs text-muted-foreground">Total Pendapatan</p>
-                  <p className="font-heading text-xl font-bold text-primary">
-                    {formatRp(totals.totalIncome)}
-                  </p>
+                  <p className="font-heading text-xl font-bold text-primary">{formatRp(totals.totalIncome)}</p>
                 </div>
                 <div className="p-2 rounded-full bg-primary/10">
                   <TrendingUp className="w-5 h-5 text-primary" />
@@ -340,9 +199,7 @@ export default function DashboardPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-xs text-muted-foreground">Total Pengeluaran</p>
-                  <p className="font-heading text-xl font-bold text-destructive">
-                    {formatRp(totals.totalExpenses)}
-                  </p>
+                  <p className="font-heading text-xl font-bold text-destructive">{formatRp(totals.totalExpenses)}</p>
                 </div>
                 <div className="p-2 rounded-full bg-destructive/10">
                   <TrendingDown className="w-5 h-5 text-destructive" />
@@ -355,9 +212,7 @@ export default function DashboardPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-xs text-muted-foreground">Stok Rendah</p>
-                  <p className="font-heading text-xl font-bold text-warning">
-                    {lowStock.length} item
-                  </p>
+                  <p className="font-heading text-xl font-bold text-warning">{lowStock.length} item</p>
                 </div>
                 <div className="p-2 rounded-full bg-warning/10">
                   <ShoppingCart className="w-5 h-5 text-warning" />
@@ -369,10 +224,8 @@ export default function DashboardPage() {
             <CardContent className="p-5">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs text-muted-foreground">Pending (Cuti + Cashbon)</p>
-                  <p className="font-heading text-xl font-bold text-secondary">
-                    {leaveRequests.length + cashbonRequests.length}
-                  </p>
+                  <p className="text-xs text-muted-foreground">Cuti Pending</p>
+                  <p className="font-heading text-xl font-bold text-secondary">{leaveRequests.length}</p>
                 </div>
                 <div className="p-2 rounded-full bg-secondary/10">
                   <Calendar className="w-5 h-5 text-secondary" />
@@ -393,11 +246,7 @@ export default function DashboardPage() {
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={chartData}>
                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                    <XAxis
-                      dataKey="date"
-                      tick={{ fontSize: 12 }}
-                      stroke="hsl(var(--muted-foreground))"
-                    />
+                    <XAxis dataKey="date" tick={{ fontSize: 12 }} stroke="hsl(var(--muted-foreground))" />
                     <YAxis tick={{ fontSize: 12 }} stroke="hsl(var(--muted-foreground))" />
                     <Tooltip
                       contentStyle={{
@@ -407,11 +256,7 @@ export default function DashboardPage() {
                       }}
                     />
                     <Bar dataKey="Pendapatan" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
-                    <Bar
-                      dataKey="Pengeluaran"
-                      fill="hsl(var(--destructive))"
-                      radius={[4, 4, 0, 0]}
-                    />
+                    <Bar dataKey="Pengeluaran" fill="hsl(var(--destructive))" radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
@@ -419,7 +264,6 @@ export default function DashboardPage() {
           </Card>
         )}
 
-        {/* Pending requests row */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Leave Requests */}
           <Card className="glass-card">
@@ -427,18 +271,13 @@ export default function DashboardPage() {
               <CardTitle className="text-lg flex items-center gap-2">
                 <Calendar className="w-5 h-5" />
                 Pengajuan Cuti Pending
-                {leaveRequests.length > 0 && (
-                  <Badge variant="secondary" className="ml-auto">
-                    {leaveRequests.length}
-                  </Badge>
-                )}
               </CardTitle>
             </CardHeader>
             <CardContent>
               {leaveRequests.length === 0 ? (
                 <p className="text-sm text-muted-foreground">Tidak ada pengajuan pending.</p>
               ) : (
-                <div className="space-y-3 max-h-96 overflow-y-auto pr-1">
+                <div className="space-y-3">
                   {leaveRequests.map((lr) => (
                     <div key={lr.id} className="p-3 rounded-lg bg-muted/50 space-y-2">
                       <div className="flex items-center justify-between">
@@ -446,115 +285,16 @@ export default function DashboardPage() {
                         <Badge variant="outline">Pending</Badge>
                       </div>
                       <p className="text-xs text-muted-foreground">
-                        {format(new Date(lr.start_date), 'dd MMM yyyy')} —{' '}
-                        {format(new Date(lr.end_date), 'dd MMM yyyy')}
+                        {format(new Date(lr.start_date), 'dd MMM yyyy')} — {format(new Date(lr.end_date), 'dd MMM yyyy')}
                       </p>
                       <p className="text-sm">{lr.reason}</p>
                       <div className="flex gap-2">
                         <Button size="sm" onClick={() => handleLeaveAction(lr.id, 'approved')}>
                           <Check className="w-3 h-3 mr-1" /> Setujui
                         </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleLeaveAction(lr.id, 'rejected')}
-                        >
+                        <Button size="sm" variant="outline" onClick={() => handleLeaveAction(lr.id, 'rejected')}>
                           <X className="w-3 h-3 mr-1" /> Tolak
                         </Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Cashbon Requests */}
-          <Card className="glass-card">
-            <CardHeader>
-              <CardTitle className="text-lg flex items-center gap-2">
-                <Wallet className="w-5 h-5" />
-                Pengajuan Cashbon Pending
-                {cashbonRequests.length > 0 && (
-                  <Badge variant="secondary" className="ml-auto">
-                    {cashbonRequests.length}
-                  </Badge>
-                )}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {cashbonRequests.length === 0 ? (
-                <p className="text-sm text-muted-foreground">Tidak ada pengajuan cashbon.</p>
-              ) : (
-                <div className="space-y-3 max-h-96 overflow-y-auto pr-1">
-                  {cashbonRequests.map((cb) => (
-                    <div key={cb.id} className="p-3 rounded-lg bg-muted/50 space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="font-medium text-sm">{cb.profile_name}</span>
-                        <Badge variant="outline">{formatRp(cb.amount)}</Badge>
-                      </div>
-                      <p className="text-xs text-muted-foreground">
-                        {format(new Date(cb.request_date), 'dd MMM yyyy')}
-                      </p>
-                      {cb.notes && <p className="text-sm">{cb.notes}</p>}
-                      <div className="flex gap-2">
-                        <Button size="sm" onClick={() => handleCashbonAction(cb.id, 'approved')}>
-                          <Check className="w-3 h-3 mr-1" /> Setujui
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleCashbonAction(cb.id, 'rejected')}
-                        >
-                          <X className="w-3 h-3 mr-1" /> Tolak
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Attendance log + Low stock */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Attendance Log Recap */}
-          <Card className="glass-card">
-            <CardHeader>
-              <CardTitle className="text-lg flex items-center gap-2">
-                <Clock className="w-5 h-5" />
-                Rekap Log Absensi Terbaru
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {attendanceLogs.length === 0 ? (
-                <p className="text-sm text-muted-foreground">Belum ada log absensi.</p>
-              ) : (
-                <div className="space-y-2 max-h-96 overflow-y-auto pr-1">
-                  {attendanceLogs.map((log) => (
-                    <div
-                      key={log.id}
-                      className="flex items-center justify-between p-3 rounded-lg bg-muted/50"
-                    >
-                      <div className="min-w-0">
-                        <p className="text-sm font-medium truncate">{log.profile_name}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {format(new Date(log.created_at), 'dd MMM yyyy HH:mm')}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-2 shrink-0">
-                        {log.out_of_radius && (
-                          <Badge variant="destructive" className="text-xs gap-1">
-                            <MapPin className="w-3 h-3" /> Luar radius
-                          </Badge>
-                        )}
-                        <Badge
-                          variant={log.log_type === 'check_in' ? 'default' : 'secondary'}
-                          className="text-xs"
-                        >
-                          {log.log_type === 'check_in' ? 'Check-in' : 'Check-out'}
-                        </Badge>
                       </div>
                     </div>
                   ))}
@@ -575,20 +315,15 @@ export default function DashboardPage() {
               {lowStock.length === 0 ? (
                 <p className="text-sm text-muted-foreground">Semua stok mencukupi.</p>
               ) : (
-                <div className="space-y-2 max-h-96 overflow-y-auto pr-1">
+                <div className="space-y-2">
                   {lowStock.map((item, idx) => (
-                    <div
-                      key={idx}
-                      className="flex items-center justify-between p-3 rounded-lg bg-muted/50"
-                    >
+                    <div key={idx} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
                       <span className="text-sm font-medium">{item.item_name}</span>
                       <div className="flex items-center gap-2">
                         <Badge variant="destructive" className="text-xs">
                           Sisa: {item.ending_stock}
                         </Badge>
-                        <span className="text-xs text-muted-foreground">
-                          min: {item.minimum_threshold}
-                        </span>
+                        <span className="text-xs text-muted-foreground">min: {item.minimum_threshold}</span>
                       </div>
                     </div>
                   ))}
@@ -603,7 +338,7 @@ export default function DashboardPage() {
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
               <Users className="w-5 h-5" />
-              Ikhtisar Karyawan {selectedOutlet !== ALL ? `— ${outletName}` : ''}
+              Ikhtisar Karyawan
             </CardTitle>
           </CardHeader>
           <CardContent>
