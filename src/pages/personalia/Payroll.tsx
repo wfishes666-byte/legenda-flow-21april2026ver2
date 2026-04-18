@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
-import { DollarSign, Plus, Calculator } from 'lucide-react';
+import { DollarSign, Plus, Calculator, Printer } from 'lucide-react';
 
 const months = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
 
@@ -123,6 +123,54 @@ export default function PayrollPage() {
   const profileMap = new Map(profiles.map((p: any) => [p.user_id, p.full_name]));
   const formatRp = (v: number) => `Rp ${(v || 0).toLocaleString('id-ID')}`;
 
+  const handlePrint = (r: any) => {
+    const name = profileMap.get(r.user_id) || '-';
+    const period = `${months[(r.period_month || 1) - 1]} ${r.period_year}`;
+    const totalAllowance = (r.meal_allowance || 0) + (r.transport_allowance || 0) + (r.other_allowance || 0);
+    const totalDeduction = (r.absence_deduction || 0) + (r.cashbon_deduction || 0) + (r.punishment_deduction || 0) + (r.other_deduction || 0);
+    const w = window.open('', '_blank', 'width=800,height=900');
+    if (!w) return;
+    const row = (label: string, val: number, cls = '') => `<tr><td style="padding:6px 10px">${label}</td><td style="padding:6px 10px;text-align:right" class="${cls}">${formatRp(val)}</td></tr>`;
+    w.document.write(`<!doctype html><html><head><title>Slip Gaji ${name} ${period}</title>
+      <style>
+        body{font-family:Arial,sans-serif;padding:32px;color:#111}
+        h1{margin:0 0 4px;font-size:20px}
+        h2{margin:0 0 16px;font-size:14px;font-weight:normal;color:#555}
+        table{width:100%;border-collapse:collapse;margin-bottom:16px}
+        .section{font-weight:bold;background:#f3f4f6;padding:6px 10px;margin-top:12px}
+        .total{border-top:2px solid #111;font-weight:bold;font-size:16px}
+        .net{background:#111;color:#fff;padding:14px;margin-top:12px;text-align:center;border-radius:6px}
+        .net p{margin:0}
+        .meta{display:flex;justify-content:space-between;margin-bottom:18px;font-size:13px}
+        @media print{button{display:none}}
+      </style></head><body>
+      <h1>SLIP GAJI</h1>
+      <h2>Periode: ${period}</h2>
+      <div class="meta"><div><strong>Nama:</strong> ${name}</div><div><strong>Status:</strong> ${r.status || 'draft'}</div></div>
+      <div class="section">Pendapatan</div>
+      <table>
+        ${row('Gaji Pokok', r.base_salary || 0)}
+        ${row('Tunjangan Makan', r.meal_allowance || 0)}
+        ${row('Tunjangan Transport', r.transport_allowance || 0)}
+        ${row('Tunjangan Lainnya', r.other_allowance || 0)}
+        <tr class="total"><td style="padding:8px 10px">Total Pendapatan</td><td style="padding:8px 10px;text-align:right">${formatRp((r.base_salary || 0) + totalAllowance)}</td></tr>
+      </table>
+      <div class="section">Potongan</div>
+      <table>
+        ${row('Potongan Absensi', r.absence_deduction || 0)}
+        ${row('Potongan Cashbon', r.cashbon_deduction || 0)}
+        ${row('Potongan Punishment', r.punishment_deduction || 0)}
+        ${row('Potongan Lainnya', r.other_deduction || 0)}
+        <tr class="total"><td style="padding:8px 10px">Total Potongan</td><td style="padding:8px 10px;text-align:right">${formatRp(totalDeduction)}</td></tr>
+      </table>
+      <div class="net"><p style="font-size:12px;opacity:0.8">Gaji Bersih</p><p style="font-size:24px;font-weight:bold">${formatRp(r.net_salary || 0)}</p></div>
+      ${r.notes ? `<p style="margin-top:16px;font-size:13px"><strong>Catatan:</strong> ${r.notes}</p>` : ''}
+      <p style="margin-top:32px;font-size:11px;color:#666">Dicetak: ${new Date().toLocaleString('id-ID')}</p>
+      <div style="margin-top:24px;text-align:center"><button onclick="window.print()" style="padding:10px 20px;background:#111;color:#fff;border:none;border-radius:6px;cursor:pointer">Cetak</button></div>
+      </body></html>`);
+    w.document.close();
+  };
+
   return (
     <AppLayout>
       <div className="max-w-4xl mx-auto space-y-6 pt-12 md:pt-0">
@@ -209,6 +257,7 @@ export default function PayrollPage() {
                     <th className="p-3 font-medium">Potongan</th>
                     <th className="p-3 font-medium">Gaji Bersih</th>
                     <th className="p-3 font-medium">Status</th>
+                    <th className="p-3 font-medium text-right">Aksi</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -224,11 +273,16 @@ export default function PayrollPage() {
                         <td className="p-3 text-destructive">{formatRp(totalDeduction)}</td>
                         <td className="p-3 font-bold">{formatRp(r.net_salary)}</td>
                         <td className="p-3"><Badge variant={r.status === 'paid' ? 'default' : 'outline'}>{r.status}</Badge></td>
+                        <td className="p-3 text-right">
+                          <Button size="sm" variant="outline" onClick={() => handlePrint(r)}>
+                            <Printer className="w-4 h-4 mr-1" /> Cetak
+                          </Button>
+                        </td>
                       </tr>
                     );
                   })}
                   {records.length === 0 && (
-                    <tr><td colSpan={7} className="p-8 text-center text-muted-foreground">Belum ada data payroll.</td></tr>
+                    <tr><td colSpan={8} className="p-8 text-center text-muted-foreground">Belum ada data payroll.</td></tr>
                   )}
                 </tbody>
               </table>
