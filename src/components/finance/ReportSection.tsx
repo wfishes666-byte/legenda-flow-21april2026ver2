@@ -106,7 +106,7 @@ export default function ReportSection({
               <CollapsibleTrigger asChild>
                 <button
                   type="button"
-                  className="w-full flex items-center justify-between px-5 py-3 bg-slate-900 hover:bg-slate-800 text-white transition-colors text-left"
+                  className="w-full flex items-center justify-between px-5 py-3 bg-foreground hover:bg-foreground/90 text-background transition-colors text-left"
                 >
                   <div className="flex items-center gap-3 min-w-0">
                     {isOpen ? <ChevronDown className="w-4 h-4 shrink-0" /> : <ChevronRight className="w-4 h-4 shrink-0" />}
@@ -116,7 +116,7 @@ export default function ReportSection({
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
                     {unassignedInGroup > 0 && (
-                      <Badge className="bg-yellow-500/20 text-yellow-300 border-yellow-500/40">
+                      <Badge className="bg-yellow-500/20 text-yellow-100 border-yellow-500/40">
                         {unassignedInGroup} belum
                       </Badge>
                     )}
