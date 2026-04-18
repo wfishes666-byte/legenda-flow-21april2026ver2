@@ -9,9 +9,20 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
-import { ClipboardList, Save, Store } from 'lucide-react';
+import { ClipboardList, Save, Store, Pencil, Trash2, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useMenuPermissions } from '@/hooks/useMenuPermissions';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 interface Outlet { id: string; name: string }
 interface Profile { user_id: string; full_name: string; job_title?: string | null; outlet_id?: string | null }
@@ -43,6 +54,14 @@ export default function PerformanceReviewPage() {
     role === 'management' ||
     role === 'pic' ||
     (role ? getPerm(role, 'personalia/performance', 'can_create', isCustom) : false);
+  const canEdit =
+    role === 'admin' ||
+    role === 'management' ||
+    (role ? getPerm(role, 'personalia/performance', 'can_edit', isCustom) : false);
+  const canDelete =
+    role === 'admin' ||
+    role === 'management' ||
+    (role ? getPerm(role, 'personalia/performance', 'can_delete', isCustom) : false);
 
   const [outlets, setOutlets] = useState<Outlet[]>([]);
   const [outletId, setOutletId] = useState<string>(ALL);
@@ -50,16 +69,18 @@ export default function PerformanceReviewPage() {
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [reviewerName, setReviewerName] = useState('');
 
-  
   const [employeeId, setEmployeeId] = useState('');
   const [month, setMonth] = useState<string>('');
   const [year, setYear] = useState<string>(String(new Date().getFullYear()));
   const [scores, setScores] = useState<Record<string, number>>({});
   const [submitting, setSubmitting] = useState(false);
 
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+
   const [records, setRecords] = useState<any[]>([]);
 
-  // Initial load: outlets, profiles, reviewer name, history
+  // Initial load
   useEffect(() => {
     (async () => {
       const [{ data: o }, { data: p }, { data: r }] = await Promise.all([
@@ -79,14 +100,24 @@ export default function PerformanceReviewPage() {
     })();
   }, [user?.id]);
 
-  // Build set of user_ids already reviewed for the current period
+  const reloadRecords = async () => {
+    const { data: r } = await supabase
+      .from('performance_reviews').select('*')
+      .order('created_at', { ascending: false }).limit(200);
+    if (r) setRecords(r);
+  };
+
+  // Build set of user_ids already reviewed for the current period (excluding the one being edited)
   const reviewedForPeriod = useMemo(() => {
     if (!month || !year) return new Set<string>();
     const period = `${month} ${year}`;
-    return new Set(records.filter((r: any) => r.review_period === period).map((r: any) => r.user_id));
-  }, [records, month, year]);
+    return new Set(
+      records
+        .filter((r: any) => r.review_period === period && r.id !== editingId)
+        .map((r: any) => r.user_id),
+    );
+  }, [records, month, year, editingId]);
 
-  // Filter employees by outlet + search + exclude already-reviewed for this period
   const filteredProfiles = useMemo(() => {
     return profiles.filter((p) => {
       if (outletId !== ALL && p.outlet_id !== outletId) return false;
@@ -102,7 +133,7 @@ export default function PerformanceReviewPage() {
     }
   }, [filteredProfiles, employeeId]);
 
-  // Compute weighted total: each category score 1-5, weight%; total normalized to 0-100
+  // Compute weighted total
   const totalScore = useMemo(() => {
     let total = 0;
     for (const c of CATEGORIES) {
@@ -130,6 +161,41 @@ export default function PerformanceReviewPage() {
     [profiles],
   );
 
+  const resetForm = () => {
+    setEditingId(null);
+    setEmployeeId('');
+    setMonth('');
+    setScores({});
+  };
+
+  const handleEdit = (r: any) => {
+    setEditingId(r.id);
+    setEmployeeId(r.user_id);
+    const parts = (r.review_period || '').split(' ');
+    setMonth(parts[0] || '');
+    setYear(parts[1] || String(new Date().getFullYear()));
+    const cats = (r.categories || {}) as Record<string, { score: number }>;
+    const next: Record<string, number> = {};
+    Object.entries(cats).forEach(([k, v]) => {
+      if (typeof v?.score === 'number') next[k] = v.score;
+    });
+    setScores(next);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleDelete = async () => {
+    if (!deleteId) return;
+    const { error } = await supabase.from('performance_reviews').delete().eq('id', deleteId);
+    if (error) {
+      toast({ title: 'Gagal hapus', description: error.message, variant: 'destructive' });
+    } else {
+      toast({ title: 'Berhasil', description: 'Penilaian dihapus.' });
+      if (editingId === deleteId) resetForm();
+      await reloadRecords();
+    }
+    setDeleteId(null);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user || !employeeId || !month || !year) {
@@ -149,23 +215,35 @@ export default function PerformanceReviewPage() {
       breakdown[c.key] = { label: c.label, weight: c.weight, score: scores[c.key] };
     });
 
-    const { error } = await supabase.from('performance_reviews').insert({
-      user_id: employeeId,
-      reviewer_id: user.id,
-      review_period: period,
-      score: totalScore,
-      categories: breakdown,
-    });
+    let error: any = null;
+    if (editingId) {
+      const res = await supabase.from('performance_reviews').update({
+        user_id: employeeId,
+        review_period: period,
+        score: totalScore,
+        categories: breakdown,
+      }).eq('id', editingId);
+      error = res.error;
+    } else {
+      const res = await supabase.from('performance_reviews').insert({
+        user_id: employeeId,
+        reviewer_id: user.id,
+        review_period: period,
+        score: totalScore,
+        categories: breakdown,
+      });
+      error = res.error;
+    }
 
     if (error) {
       toast({ title: 'Gagal', description: error.message, variant: 'destructive' });
     } else {
-      toast({ title: 'Berhasil', description: `Penilaian ${period} tersimpan (skor ${totalScore}).` });
-      setEmployeeId('');
-      setMonth('');
-      setScores({});
-      const { data: r } = await supabase.from('performance_reviews').select('*').order('created_at', { ascending: false }).limit(200);
-      if (r) setRecords(r);
+      toast({
+        title: 'Berhasil',
+        description: `${editingId ? 'Perubahan' : 'Penilaian'} ${period} tersimpan (skor ${totalScore}).`,
+      });
+      resetForm();
+      await reloadRecords();
     }
     setSubmitting(false);
   };
@@ -176,7 +254,6 @@ export default function PerformanceReviewPage() {
     return 'destructive';
   };
 
-  // Outlet pill filter (Semua + outlets)
   const outletPills = [{ id: ALL, name: 'Semua' }, ...outlets];
 
   return (
@@ -216,7 +293,16 @@ export default function PerformanceReviewPage() {
         {canManage && (
           <Card className="glass-card">
             <CardHeader>
-              <CardTitle className="text-base font-bold tracking-wide uppercase">Penilaian Kinerja</CardTitle>
+              <div className="flex items-center justify-between gap-2">
+                <CardTitle className="text-base font-bold tracking-wide uppercase">
+                  {editingId ? 'Edit Penilaian' : 'Penilaian Kinerja'}
+                </CardTitle>
+                {editingId && (
+                  <Button type="button" size="sm" variant="ghost" onClick={resetForm}>
+                    <X className="w-4 h-4 mr-1" /> Batal Edit
+                  </Button>
+                )}
+              </div>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleSubmit} className="space-y-5">
@@ -250,7 +336,7 @@ export default function PerformanceReviewPage() {
                   <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                     Karyawan
                   </Label>
-                  <Select value={employeeId} onValueChange={setEmployeeId}>
+                  <Select value={employeeId} onValueChange={setEmployeeId} disabled={!!editingId}>
                     <SelectTrigger><SelectValue placeholder={month && year ? '-- Pilih --' : 'Pilih bulan & tahun dahulu'} /></SelectTrigger>
                     <SelectContent>
                       {filteredProfiles.length === 0 && (
@@ -265,7 +351,7 @@ export default function PerformanceReviewPage() {
                       ))}
                     </SelectContent>
                   </Select>
-                  {month && year && (
+                  {month && year && !editingId && (
                     <p className="text-[11px] text-muted-foreground">
                       Karyawan yang sudah dinilai untuk <strong>{month} {year}</strong> otomatis disembunyikan.
                     </p>
@@ -320,7 +406,8 @@ export default function PerformanceReviewPage() {
                   disabled={submitting || !employeeId}
                   className="w-full h-11 font-semibold"
                 >
-                  <Save className="w-4 h-4 mr-2" /> Simpan Penilaian
+                  <Save className="w-4 h-4 mr-2" />
+                  {editingId ? 'Simpan Perubahan' : 'Simpan Penilaian'}
                 </Button>
               </form>
             </CardContent>
@@ -330,42 +417,102 @@ export default function PerformanceReviewPage() {
         {/* Riwayat */}
         <Card className="glass-card">
           <CardHeader><CardTitle className="text-lg">Riwayat Penilaian</CardTitle></CardHeader>
-          <CardContent className="p-0">
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-border text-left text-muted-foreground">
-                    <th className="p-3 font-medium">Karyawan</th>
-                    <th className="p-3 font-medium">Periode</th>
-                    <th className="p-3 font-medium">Skor</th>
-                    <th className="p-3 font-medium">Rincian</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {records.map((r) => {
-                    const prof = profileMap.get(r.user_id);
-                    const cats = (r.categories || {}) as Record<string, { label: string; score: number }>;
-                    const summary = Object.values(cats)
-                      .map((c) => `${c.label.split(' ')[0]}:${c.score}`)
-                      .join(' · ');
-                    return (
-                      <tr key={r.id} className="border-b border-border/50 hover:bg-muted/30">
-                        <td className="p-3">{prof?.full_name || '-'}</td>
-                        <td className="p-3">{r.review_period}</td>
-                        <td className="p-3"><Badge variant={scoreVariant(r.score)}>{r.score}</Badge></td>
-                        <td className="p-3 text-xs text-muted-foreground max-w-md truncate">{summary || r.notes || '-'}</td>
-                      </tr>
-                    );
-                  })}
-                  {records.length === 0 && (
-                    <tr><td colSpan={4} className="p-8 text-center text-muted-foreground">Belum ada data penilaian.</td></tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
+          <CardContent className="p-3 sm:p-4 space-y-2">
+            {records.length === 0 && (
+              <p className="p-8 text-center text-muted-foreground text-sm">Belum ada data penilaian.</p>
+            )}
+
+            {records.length > 0 && (
+              <Accordion type="multiple" className="w-full space-y-2">
+                {records.map((r) => {
+                  const prof = profileMap.get(r.user_id);
+                  const cats = (r.categories || {}) as Record<string, { label: string; weight?: number; score: number }>;
+                  const catEntries = Object.entries(cats);
+
+                  return (
+                    <AccordionItem
+                      key={r.id}
+                      value={r.id}
+                      className="border border-border/60 rounded-lg bg-muted/20 px-3 sm:px-4"
+                    >
+                      <AccordionTrigger className="py-3 hover:no-underline">
+                        <div className="flex flex-1 items-center justify-between gap-3 pr-2 min-w-0">
+                          <div className="min-w-0 text-left">
+                            <div className="font-semibold text-sm truncate">{prof?.full_name || '-'}</div>
+                            <div className="text-[11px] text-muted-foreground truncate">{r.review_period}</div>
+                          </div>
+                          <Badge variant={scoreVariant(r.score)} className="shrink-0">{r.score}</Badge>
+                        </div>
+                      </AccordionTrigger>
+                      <AccordionContent className="pb-3">
+                        <div className="space-y-2">
+                          {catEntries.length === 0 && (
+                            <p className="text-xs text-muted-foreground">{r.notes || 'Tidak ada rincian.'}</p>
+                          )}
+                          {catEntries.map(([key, c]) => (
+                            <div
+                              key={key}
+                              className="flex items-center justify-between gap-3 p-2.5 rounded-md bg-background border border-border/50"
+                            >
+                              <div className="min-w-0">
+                                <div className="text-sm font-medium truncate">{c.label}</div>
+                                {typeof c.weight === 'number' && (
+                                  <div className="text-[11px] text-muted-foreground">Bobot {c.weight}%</div>
+                                )}
+                              </div>
+                              <div className="text-sm font-bold tabular-nums">{c.score}<span className="text-muted-foreground font-normal">/5</span></div>
+                            </div>
+                          ))}
+
+                          {(canEdit || canDelete) && (
+                            <div className="flex flex-wrap gap-2 pt-2 border-t border-border/50">
+                              {canEdit && (
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => handleEdit(r)}
+                                >
+                                  <Pencil className="w-3.5 h-3.5 mr-1.5" /> Edit
+                                </Button>
+                              )}
+                              {canDelete && (
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="destructive"
+                                  onClick={() => setDeleteId(r.id)}
+                                >
+                                  <Trash2 className="w-3.5 h-3.5 mr-1.5" /> Hapus
+                                </Button>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </AccordionContent>
+                    </AccordionItem>
+                  );
+                })}
+              </Accordion>
+            )}
           </CardContent>
         </Card>
       </div>
+
+      <AlertDialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Hapus penilaian ini?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Data penilaian kinerja akan dihapus permanen dan tidak bisa dikembalikan.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Batal</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete}>Hapus</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </AppLayout>
   );
 }
