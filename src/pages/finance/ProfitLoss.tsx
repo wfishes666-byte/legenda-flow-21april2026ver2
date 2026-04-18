@@ -276,60 +276,68 @@ export default function ProfitLossPage() {
               </CardContent>
             </Card>
 
-            <Card className="glass-card">
-              <CardHeader className="flex flex-row items-center justify-between">
-                <CardTitle className="text-base">
-                  Pemilahan Pengeluaran ({expenseRows.length} item)
-                </CardTitle>
-                <Button onClick={handleSaveAll} disabled={saving || Object.keys(pendingChanges).length === 0}>
-                  <Save className="w-4 h-4 mr-1" />
-                  {saving ? 'Menyimpan...' : `Simpan (${Object.keys(pendingChanges).length})`}
+            {/* Outlet filter chips */}
+            <div className="flex flex-wrap gap-2">
+              <Button
+                size="sm"
+                variant={inputOutletFilter === 'all' ? 'default' : 'outline'}
+                onClick={() => setInputOutletFilter('all')}
+              >
+                Semua
+              </Button>
+              {outlets.map((o) => (
+                <Button
+                  key={o.id}
+                  size="sm"
+                  variant={inputOutletFilter === o.id ? 'default' : 'outline'}
+                  onClick={() => setInputOutletFilter(o.id)}
+                >
+                  {o.name}
                 </Button>
-              </CardHeader>
-              <CardContent>
-                {expenseRows.length === 0 ? (
-                  <p className="text-sm text-muted-foreground text-center py-8">
-                    Belum ada pengeluaran pada periode ini.
-                  </p>
-                ) : (
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead className="w-28">Tanggal</TableHead>
-                        <TableHead>Deskripsi</TableHead>
-                        <TableHead className="text-right w-36">Jumlah</TableHead>
-                        <TableHead className="w-64">Akun / Kategori</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {expenseRows.map((row) => {
-                        const current = pendingChanges[row.id] ?? row.category ?? '';
-                        const isPending = pendingChanges[row.id] !== undefined;
-                        return (
-                          <TableRow key={row.id} className={isPending ? 'bg-primary/5' : ''}>
-                            <TableCell className="text-xs">{row.report_date}</TableCell>
-                            <TableCell className="text-sm">{row.description}</TableCell>
-                            <TableCell className="text-right font-medium">{formatRp(row.amount)}</TableCell>
-                            <TableCell>
-                              <Select value={current} onValueChange={(v) => handleCategoryChange(row.id, v)}>
-                                <SelectTrigger className="h-9">
-                                  <SelectValue placeholder="-- Pilih Akun --" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {expenseCategories.map((c) => (
-                                    <SelectItem key={c.id} value={c.name}>{c.name}</SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })}
-                    </TableBody>
-                  </Table>
-                )}
-              </CardContent>
-            </Card>
+              ))}
+            </div>
+
+            <div className="flex justify-end">
+              <Button onClick={handleSaveAll} disabled={saving || Object.keys(pendingChanges).length === 0}>
+                <Save className="w-4 h-4 mr-1" />
+                {saving ? 'Menyimpan...' : `Simpan Perubahan (${Object.keys(pendingChanges).length})`}
+              </Button>
+            </div>
+
+            {/* Section: Belum Diassign */}
+            <ReportSection
+              title="Belum Diassign"
+              accent="warning"
+              groups={unassignedGroups}
+              openGroups={openGroups}
+              toggleGroup={toggleGroup}
+              expenseCategories={expenseCategories}
+              pendingChanges={pendingChanges}
+              onCategoryChange={handleCategoryChange}
+              formatRp={formatRp}
+              defaultOpen
+            />
+
+            {/* Section: Akun Terisi */}
+            <ReportSection
+              title="Akun Terisi"
+              accent="success"
+              groups={assignedGroups}
+              openGroups={openGroups}
+              toggleGroup={toggleGroup}
+              expenseCategories={expenseCategories}
+              pendingChanges={pendingChanges}
+              onCategoryChange={handleCategoryChange}
+              formatRp={formatRp}
+            />
+
+            {filteredGroups.length === 0 && (
+              <Card className="glass-card">
+                <CardContent className="py-12 text-center text-sm text-muted-foreground">
+                  Belum ada laporan harian pada periode & cabang ini.
+                </CardContent>
+              </Card>
+            )}
           </TabsContent>
 
           {/* TAB 2: LAPORAN L/R */}
