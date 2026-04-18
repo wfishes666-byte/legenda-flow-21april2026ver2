@@ -11,6 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 import { ClipboardList, Save, Search, Store } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useMenuPermissions } from '@/hooks/useMenuPermissions';
 
 interface Outlet { id: string; name: string }
 interface Profile { user_id: string; full_name: string; job_title?: string | null; outlet_id?: string | null }
@@ -35,7 +36,13 @@ const ALL = '__all__';
 export default function PerformanceReviewPage() {
   const { user, role } = useAuth();
   const { toast } = useToast();
-  const canManage = role === 'management' || role === 'pic';
+  const { getPerm, customRoles } = useMenuPermissions();
+  const isCustom = !!role && customRoles.some((c) => c.code === role);
+  const canManage =
+    role === 'admin' ||
+    role === 'management' ||
+    role === 'pic' ||
+    (role ? getPerm(role, 'personalia/performance', 'can_create', isCustom) : false);
 
   const [outlets, setOutlets] = useState<Outlet[]>([]);
   const [outletId, setOutletId] = useState<string>(ALL);
