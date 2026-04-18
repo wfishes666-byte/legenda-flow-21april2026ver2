@@ -40,8 +40,7 @@ export default function SettingsPage() {
   const [uploading, setUploading] = useState(false);
 
   // Hidden password feature (admin only)
-  const [dragonClicks, setDragonClicks] = useState(0); // legacy — tidak dipakai lagi
-  void dragonClicks; void setDragonClicks;
+  const [pwDialogOpen, setPwDialogOpen] = useState(false);
   const [pwDialogOpen, setPwDialogOpen] = useState(false);
   const [newPw, setNewPw] = useState('');
   const [confirmPw, setConfirmPw] = useState('');
