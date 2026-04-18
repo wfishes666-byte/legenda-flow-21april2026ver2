@@ -249,6 +249,37 @@ export default function ProfilePage() {
           </CardContent>
         </Card>
 
+        {/* Absensi Hari Ini */}
+        <Card className="glass-card">
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle className="font-heading text-lg flex items-center gap-2">
+              <Camera className="w-5 h-5 text-primary" /> Absensi Hari Ini
+            </CardTitle>
+            <Button onClick={() => navigate('/attendance/check-in')} className="gap-2">
+              <Camera className="w-4 h-4" /> Absen Sekarang
+            </Button>
+          </CardHeader>
+          <CardContent>
+            {todayLogs.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Belum ada absensi hari ini. Klik "Absen Sekarang" untuk selfie + GPS.</p>
+            ) : (
+              <div className="flex flex-wrap gap-3">
+                {todayLogs.map((log, i) => (
+                  <div key={i} className="flex items-center gap-2 p-2 bg-muted/40 rounded-lg">
+                    <img src={log.selfie_url} alt="" className="w-10 h-10 rounded object-cover" />
+                    <div className="text-xs">
+                      <StatusBadge variant={log.log_type === 'check_in' ? 'default' : 'secondary'}>
+                        {log.log_type === 'check_in' ? 'IN' : 'OUT'}
+                      </StatusBadge>
+                      <p className="text-muted-foreground mt-0.5">{format(new Date(log.created_at), 'HH:mm:ss')}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
         {/* Action Buttons */}
         <div className="flex flex-col sm:flex-row gap-3">
           {/* Leave Request */}
