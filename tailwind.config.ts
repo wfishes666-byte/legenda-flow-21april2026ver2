@@ -7,16 +7,15 @@ export default {
   theme: {
     container: {
       center: true,
-      padding: "1rem",
+      padding: "2rem",
       screens: {
-        "2xl": "1536px",
+        "2xl": "1400px",
       },
     },
     extend: {
       fontFamily: {
-        heading: ['Helvetica', 'Helvetica Neue', 'Arial', 'sans-serif'],
-        body: ['Helvetica', 'Helvetica Neue', 'Arial', 'sans-serif'],
-        sans: ['Helvetica', 'Helvetica Neue', 'Arial', 'sans-serif'],
+        heading: ['Playfair Display', 'serif'],
+        body: ['DM Sans', 'sans-serif'],
       },
       colors: {
         border: "hsl(var(--border))",

@@ -134,7 +134,7 @@ export default function AppSidebar() {
 
       <aside
         className={cn(
-          'fixed top-0 left-0 z-40 h-full w-56 bg-sidebar text-sidebar-foreground border-r border-sidebar-border flex flex-col transition-transform duration-300 md:translate-x-0 overflow-y-auto',
+          'fixed top-0 left-0 z-40 h-full w-64 bg-sidebar text-sidebar-foreground flex flex-col transition-transform duration-300 md:translate-x-0 overflow-y-auto',
           open ? 'translate-x-0' : '-translate-x-full'
         )}
       >
