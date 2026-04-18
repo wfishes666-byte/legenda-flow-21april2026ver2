@@ -965,6 +965,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_user_outlet: { Args: { _user_id: string }; Returns: string }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -972,6 +973,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      pic_can_access_outlet: { Args: { _outlet_id: string }; Returns: boolean }
     }
     Enums: {
       app_role: "staff" | "management" | "pic" | "crew" | "stockman"
