@@ -75,6 +75,7 @@ const navGroups: NavGroup[] = [
     items: [
       { to: '/finance/daily-recap', icon: FileText, label: 'Rekapan Laporan Harian', roles: ['management', 'pic'] },
       { to: '/finance/profit-loss', icon: TrendingUp, label: 'Laporan Laba Rugi', roles: ['management', 'pic'] },
+      { to: '/finance/invoice', icon: FileText, label: 'Invoice', roles: ['management', 'pic'] },
     ],
   },
   {

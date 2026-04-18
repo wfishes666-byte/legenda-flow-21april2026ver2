@@ -23,6 +23,7 @@ import ActivityLogPage from "./pages/ActivityLog";
 // Finance
 import DailyRecapPage from "./pages/finance/DailyRecap";
 import ProfitLossPage from "./pages/finance/ProfitLoss";
+import InvoicePage from "./pages/finance/Invoice";
 
 // Inventory
 import InventoryPage from "./pages/Inventory";
@@ -74,6 +75,7 @@ function AppRoutes() {
       {/* Finance */}
       <Route path="/finance/daily-recap" element={<ProtectedRoute allowedRoles={['management', 'pic']}><DailyRecapPage /></ProtectedRoute>} />
       <Route path="/finance/profit-loss" element={<ProtectedRoute allowedRoles={['management', 'pic']}><ProfitLossPage /></ProtectedRoute>} />
+      <Route path="/finance/invoice" element={<ProtectedRoute allowedRoles={['management', 'pic']}><InvoicePage /></ProtectedRoute>} />
 
       {/* Inventory */}
       <Route path="/inventory/daily-stock" element={<ProtectedRoute allowedRoles={['management', 'pic', 'stockman', 'staff']}><InventoryPage /></ProtectedRoute>} />
