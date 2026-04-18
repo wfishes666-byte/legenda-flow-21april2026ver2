@@ -18,6 +18,8 @@ import { id as localeId } from 'date-fns/locale';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import ReportSection from '@/components/finance/ReportSection';
+import { ExportButtons } from '@/components/ExportButtons';
+import { formatRpExport } from '@/lib/exportUtils';
 
 interface ExpenseRow {
   id: string;
@@ -249,9 +251,24 @@ export default function ProfitLossPage() {
           <div className="flex flex-wrap gap-2 items-center">
             <Input type="month" value={month} onChange={(e) => setMonth(e.target.value)} className="w-40" />
             <OutletSelector outlets={outlets} selectedOutlet={selectedOutlet} onSelect={setSelectedOutlet} />
-            <Button variant="outline" size="sm" onClick={handleExportPDF}>
-              <Download className="w-4 h-4 mr-1" /> PDF
-            </Button>
+            <ExportButtons
+              filename={`laba-rugi-${month}`}
+              title={`Laporan Laba Rugi - ${month}`}
+              columns={[
+                { header: 'Kategori', accessor: (r: any) => r.kategori },
+                { header: 'Jumlah', accessor: (r: any) => r.jumlah },
+              ]}
+              rows={[
+                { kategori: 'PENDAPATAN — Offline', jumlah: formatRpExport(incomeData.offline) },
+                { kategori: 'PENDAPATAN — Online', jumlah: formatRpExport(incomeData.online) },
+                { kategori: 'TOTAL PENDAPATAN', jumlah: formatRpExport(totalIncome) },
+                ...Object.entries(expensesByCategory).sort((a, b) => b[1] - a[1]).map(([cat, amt]) => ({
+                  kategori: `Pengeluaran — ${cat}`, jumlah: formatRpExport(amt),
+                })),
+                { kategori: 'TOTAL PENGELUARAN', jumlah: formatRpExport(totalExpenses) },
+                { kategori: 'LABA / RUGI BERSIH', jumlah: formatRpExport(netProfit) },
+              ]}
+            />
           </div>
         </div>
 

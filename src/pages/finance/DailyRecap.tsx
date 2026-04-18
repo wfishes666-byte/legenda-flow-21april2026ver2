@@ -12,6 +12,8 @@ import { FileText, Download } from 'lucide-react';
 import { format } from 'date-fns';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { ExportButtons } from '@/components/ExportButtons';
+import { formatRpExport } from '@/lib/exportUtils';
 
 export default function DailyRecapPage() {
   const { role } = useAuth();
@@ -63,9 +65,30 @@ export default function DailyRecapPage() {
           <h1 className="text-2xl md:text-3xl font-bold font-sans flex items-center gap-3">
             <FileText className="w-7 h-7" /> Rekapan Laporan Harian
           </h1>
-          <div className="flex gap-2 items-center">
+          <div className="flex gap-2 items-center flex-wrap">
             <OutletSelector outlets={outlets} selectedOutlet={selectedOutlet} onSelect={setSelectedOutlet} />
-            <Button variant="outline" size="sm" onClick={handleExportPDF}><Download className="w-4 h-4 mr-1" /> PDF</Button>
+            <ExportButtons
+              filename={`rekapan-harian-${format(new Date(), 'yyyy-MM-dd')}`}
+              title="Rekapan Laporan Harian"
+              orientation="landscape"
+              columns={[
+                { header: 'Tanggal', accessor: 'report_date' },
+                { header: 'Cabang', accessor: (r: any) => outletMap.get(r.outlet_id) || '-' },
+                { header: 'Pelapor', accessor: (r: any) => profileMap.get(r.user_id) || '-' },
+                { header: 'Kas Awal', accessor: (r: any) => formatRpExport(r.starting_cash) },
+                { header: 'Offline', accessor: (r: any) => formatRpExport(r.daily_offline_income) },
+                { header: 'Online', accessor: (r: any) => formatRpExport(r.online_delivery_sales) },
+                { header: 'Kas Fisik', accessor: (r: any) => formatRpExport(r.ending_physical_cash) },
+                { header: 'QRIS', accessor: (r: any) => formatRpExport(r.ending_qris_cash) },
+                { header: 'Selisih', accessor: (r: any) => {
+                  const totalIncome = (r.daily_offline_income || 0) + (r.online_delivery_sales || 0);
+                  const totalCash = (r.ending_physical_cash || 0) + (r.ending_qris_cash || 0);
+                  const diff = totalCash - ((r.starting_cash || 0) + totalIncome);
+                  return formatRpExport(diff);
+                }},
+              ]}
+              rows={reports}
+            />
           </div>
         </div>
 

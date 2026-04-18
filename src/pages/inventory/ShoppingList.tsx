@@ -6,6 +6,7 @@ import { useOutlets } from '@/hooks/useOutlets';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ShoppingCart } from 'lucide-react';
+import { ExportButtons } from '@/components/ExportButtons';
 
 interface ShoppingItem {
   item_name: string;
@@ -50,7 +51,20 @@ export default function ShoppingListPage() {
           <h1 className="text-2xl md:text-3xl font-bold font-sans flex items-center gap-3">
             <ShoppingCart className="w-7 h-7" /> Rekomendasi Belanja
           </h1>
-          <OutletSelector outlets={outlets} selectedOutlet={selectedOutlet} onSelect={setSelectedOutlet} />
+          <div className="flex gap-2 items-center flex-wrap">
+            <OutletSelector outlets={outlets} selectedOutlet={selectedOutlet} onSelect={setSelectedOutlet} />
+            <ExportButtons
+              filename="daftar-belanja"
+              title="Daftar Belanja"
+              columns={[
+                { header: 'Bahan', accessor: 'item_name' },
+                { header: 'Stok Sisa', accessor: 'ending_stock' },
+                { header: 'Min. Threshold', accessor: 'minimum_threshold' },
+                { header: 'Rekomendasi Beli', accessor: 'needed' },
+              ]}
+              rows={items}
+            />
+          </div>
         </div>
 
         {items.length === 0 ? (
