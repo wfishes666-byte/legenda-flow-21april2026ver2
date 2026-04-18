@@ -35,7 +35,7 @@ export default function SettingsPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
 
-  if (role !== 'management' && role !== 'admin') {
+  if (role !== 'management') {
     return <Navigate to="/profile" replace />;
   }
 

@@ -87,8 +87,8 @@ export default function FinancialReport() {
   const [newCat, setNewCat] = useState('');
   const [reports, setReports] = useState<ReportRecord[]>([]);
 
-  const canManage = role === 'management' || role === 'admin';
-  const canViewAll = role === 'management' || role === 'pic' || role === 'admin';
+  const canManage = role === 'management';
+  const canViewAll = role === 'management' || role === 'pic';
 
   // Load categories from DB
   useEffect(() => {

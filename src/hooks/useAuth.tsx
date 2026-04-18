@@ -3,7 +3,7 @@ import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { logActivity } from '@/lib/activityLog';
 
-export type AppRole = 'staff' | 'management' | 'pic' | 'crew' | 'stockman' | 'admin';
+export type AppRole = 'staff' | 'management' | 'pic' | 'crew' | 'stockman';
 
 export interface SignUpPayload {
   full_name: string;
@@ -48,39 +48,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { data } = await supabase
       .from('user_roles')
       .select('role')
-      .eq('user_id', userId);
-
-    const roles = (data?.map((row) => row.role as AppRole) || []);
-    const priority: AppRole[] = ['admin', 'management', 'pic', 'stockman', 'crew', 'staff'];
-    const resolvedRole = priority.find((candidate) => roles.includes(candidate)) || 'crew';
-    setRole(resolvedRole);
+      .eq('user_id', userId)
+      .limit(1)
+      .maybeSingle();
+    setRole((data?.role as AppRole) || 'crew');
   };
 
   useEffect(() => {
-    const syncSession = async (nextSession: Session | null) => {
-      setSession(nextSession);
-      setUser(nextSession?.user ?? null);
-
-      if (nextSession?.user) {
-        await fetchRole(nextSession.user.id);
-      } else {
-        setRole(null);
-      }
-
-      setLoading(false);
-    };
-
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event, nextSession) => {
-        setLoading(true);
-        setTimeout(() => {
-          void syncSession(nextSession);
-        }, 0);
+      async (_event, session) => {
+        setSession(session);
+        setUser(session?.user ?? null);
+        if (session?.user) {
+          setTimeout(() => fetchRole(session.user.id), 0);
+        } else {
+          setRole(null);
+        }
+        setLoading(false);
       }
     );
 
-    void supabase.auth.getSession().then(({ data: { session: currentSession } }) => {
-      void syncSession(currentSession);
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setUser(session?.user ?? null);
+      if (session?.user) {
+        fetchRole(session.user.id);
+      }
+      setLoading(false);
     });
 
     return () => subscription.unsubscribe();

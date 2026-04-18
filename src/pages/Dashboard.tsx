@@ -89,7 +89,7 @@ const ALL = '__all__';
 
 export default function DashboardPage() {
   const { toast } = useToast();
-  const { role, loading: authLoading } = useAuth();
+  const { role } = useAuth();
   const [outlets, setOutlets] = useState<Outlet[]>([]);
   const [selectedOutlet, setSelectedOutlet] = useState<string>(ALL);
 
@@ -113,10 +113,9 @@ export default function DashboardPage() {
   }, []);
 
   useEffect(() => {
-    if (authLoading || !role) return;
     fetchAll();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedOutlet, authLoading, role]);
+  }, [selectedOutlet]);
 
   const applyOutletFilter = <T extends { outlet_id?: string | null }>(q: any) => {
     if (selectedOutlet !== ALL) {

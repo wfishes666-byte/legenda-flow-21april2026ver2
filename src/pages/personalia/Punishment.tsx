@@ -28,7 +28,7 @@ const isSpStatus = (status?: string | null) =>
 export default function PunishmentPage() {
   const { user, role } = useAuth();
   const { toast } = useToast();
-  const canManage = role === 'management' || role === 'pic' || role === 'admin';
+  const canManage = role === 'management' || role === 'pic';
   const [records, setRecords] = useState<any[]>([]);
   const [spHistory, setSpHistory] = useState<any[]>([]);
   const [profiles, setProfiles] = useState<any[]>([]);

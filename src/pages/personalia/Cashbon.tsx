@@ -15,8 +15,8 @@ import { Banknote, Plus, Check, X } from 'lucide-react';
 export default function CashbonPage() {
   const { user, role } = useAuth();
   const { toast } = useToast();
-  const canManage = role === 'management' || role === 'admin';
-  const canView = role === 'management' || role === 'pic' || role === 'admin';
+  const canManage = role === 'management';
+  const canView = role === 'management' || role === 'pic';
   const [records, setRecords] = useState<any[]>([]);
   const [profiles, setProfiles] = useState<any[]>([]);
   const [amount, setAmount] = useState('');

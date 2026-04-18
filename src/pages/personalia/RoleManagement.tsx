@@ -16,9 +16,8 @@ interface UserWithRole {
 }
 
 const ROLES: { value: AppRole; label: string; description: string }[] = [
-  { value: 'admin', label: 'Admin', description: 'Super-user (god mode), kelola role' },
-  { value: 'management', label: 'Management', description: 'Akses penuh menu operasional' },
-  { value: 'pic', label: 'PIC', description: 'Edit cabang sendiri, tidak bisa hapus' },
+  { value: 'management', label: 'Management', description: 'Akses penuh semua menu' },
+  { value: 'pic', label: 'PIC', description: 'Edit semua kanal, tidak bisa hapus' },
   { value: 'stockman', label: 'Stockman', description: 'Profil sendiri + stok & inventaris' },
   { value: 'crew', label: 'Crew', description: 'Profil sendiri + laporan harian' },
   { value: 'staff', label: 'Staff', description: 'Akses dasar' },
@@ -39,19 +38,12 @@ export default function RoleManagement() {
     const { data: roles } = await supabase.from('user_roles').select('user_id, role');
 
     if (profiles) {
-      const priority: AppRole[] = ['admin', 'management', 'pic', 'stockman', 'crew', 'staff'];
-      const merged: UserWithRole[] = profiles.map((p) => {
-        const userRoles = (roles || [])
-          .filter((r) => r.user_id === p.user_id)
-          .map((r) => r.role as AppRole);
-        const resolvedRole = priority.find((candidate) => userRoles.includes(candidate)) || 'crew';
-        return {
-          user_id: p.user_id,
-          full_name: p.full_name || '-',
-          job_title: p.job_title || '-',
-          role: resolvedRole,
-        };
-      });
+      const merged: UserWithRole[] = profiles.map((p) => ({
+        user_id: p.user_id,
+        full_name: p.full_name || '-',
+        job_title: p.job_title || '-',
+        role: (roles?.find((r) => r.user_id === p.user_id)?.role as AppRole) || 'crew',
+      }));
       setUsers(merged);
     }
     setLoading(false);
@@ -79,7 +71,6 @@ export default function RoleManagement() {
   };
 
   const roleBadgeVariant = (role: AppRole) => {
-    if (role === 'admin') return 'destructive';
     if (role === 'management') return 'default';
     if (role === 'pic') return 'secondary';
     return 'outline';
@@ -97,7 +88,7 @@ export default function RoleManagement() {
 
         <Card className="glass-card">
           <CardContent className="p-4 md:p-6">
-            <div className="grid gap-3 md:grid-cols-6 mb-6">
+            <div className="grid gap-3 md:grid-cols-5 mb-6">
               {ROLES.map((r) => (
                 <div key={r.value} className="rounded-lg border border-border p-3 bg-muted/20">
                   <Badge variant={roleBadgeVariant(r.value)} className="mb-2">{r.label}</Badge>
