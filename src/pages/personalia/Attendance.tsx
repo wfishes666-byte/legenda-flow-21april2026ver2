@@ -181,6 +181,7 @@ export default function AttendancePage() {
           <TabsList>
             <TabsTrigger value="input">Input Absensi</TabsTrigger>
             <TabsTrigger value="recap">Rekap Bulanan</TabsTrigger>
+            <TabsTrigger value="logs">Log Absen Selfie</TabsTrigger>
           </TabsList>
 
           <TabsContent value="input" className="space-y-4">
