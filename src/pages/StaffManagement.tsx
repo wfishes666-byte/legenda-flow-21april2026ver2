@@ -187,12 +187,12 @@ export default function StaffManagement() {
         </Card>
 
         <Dialog open={!!editProfile} onOpenChange={(open) => !open && setEditProfile(null)}>
-          <DialogContent className="max-w-lg">
+          <DialogContent className="max-w-lg max-h-[90vh] flex flex-col">
             <DialogHeader>
               <DialogTitle className="font-heading">Edit Profil: {editProfile?.full_name}</DialogTitle>
             </DialogHeader>
             {editProfile && (
-              <div className="space-y-4">
+              <div className="space-y-4 overflow-y-auto pr-2 flex-1">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>Nama Panggilan</Label>
