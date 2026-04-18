@@ -142,8 +142,8 @@ export default function AppSidebar() {
           open ? 'translate-x-0' : '-translate-x-full'
         )}
       >
-        <div className="p-6 border-b border-sidebar-border text-black bg-black">
-          <h1 className="text-xl font-bold text-primary-foreground font-sans">
+        <div className="p-6 border-b border-sidebar-border bg-sidebar-accent/30">
+          <h1 className="text-xl font-bold text-sidebar-primary font-heading">
             Dua Legenda
           </h1>
           <p className="text-xs text-sidebar-foreground/60 mt-1">Business Management</p>
