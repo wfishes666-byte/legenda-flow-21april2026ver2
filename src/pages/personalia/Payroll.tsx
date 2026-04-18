@@ -16,7 +16,7 @@ const months = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustu
 export default function PayrollPage() {
   const { user, role } = useAuth();
   const { toast } = useToast();
-  const canManage = role === 'management';
+  const canManage = role === 'management' || role === 'admin';
   const [records, setRecords] = useState<any[]>([]);
   const [profiles, setProfiles] = useState<any[]>([]);
   const [form, setForm] = useState({

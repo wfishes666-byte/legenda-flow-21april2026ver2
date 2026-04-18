@@ -39,12 +39,19 @@ export default function RoleManagement() {
     const { data: roles } = await supabase.from('user_roles').select('user_id, role');
 
     if (profiles) {
-      const merged: UserWithRole[] = profiles.map((p) => ({
-        user_id: p.user_id,
-        full_name: p.full_name || '-',
-        job_title: p.job_title || '-',
-        role: (roles?.find((r) => r.user_id === p.user_id)?.role as AppRole) || 'crew',
-      }));
+      const priority: AppRole[] = ['admin', 'management', 'pic', 'stockman', 'crew', 'staff'];
+      const merged: UserWithRole[] = profiles.map((p) => {
+        const userRoles = (roles || [])
+          .filter((r) => r.user_id === p.user_id)
+          .map((r) => r.role as AppRole);
+        const resolvedRole = priority.find((candidate) => userRoles.includes(candidate)) || 'crew';
+        return {
+          user_id: p.user_id,
+          full_name: p.full_name || '-',
+          job_title: p.job_title || '-',
+          role: resolvedRole,
+        };
+      });
       setUsers(merged);
     }
     setLoading(false);

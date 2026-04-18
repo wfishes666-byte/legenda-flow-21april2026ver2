@@ -35,7 +35,7 @@ const ALL = '__all__';
 export default function PerformanceReviewPage() {
   const { user, role } = useAuth();
   const { toast } = useToast();
-  const canManage = role === 'management' || role === 'pic';
+  const canManage = role === 'management' || role === 'pic' || role === 'admin';
 
   const [outlets, setOutlets] = useState<Outlet[]>([]);
   const [outletId, setOutletId] = useState<string>(ALL);

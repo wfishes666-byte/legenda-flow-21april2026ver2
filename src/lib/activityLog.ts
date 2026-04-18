@@ -17,15 +17,19 @@ export async function logActivity({ module, action, description = '', metadata =
     if (!user) return;
 
     // Best-effort fetch profile + role for richer logs
-    const [{ data: profile }, { data: roleRow }] = await Promise.all([
+    const [{ data: profile }, { data: roleRows }] = await Promise.all([
       supabase.from('profiles').select('full_name').eq('user_id', user.id).maybeSingle(),
-      supabase.from('user_roles').select('role').eq('user_id', user.id).limit(1).maybeSingle(),
+      supabase.from('user_roles').select('role').eq('user_id', user.id),
     ]);
+
+    const roles = (roleRows?.map((row) => row.role as string) || []);
+    const rolePriority = ['admin', 'management', 'pic', 'stockman', 'crew', 'staff'];
+    const resolvedRole = rolePriority.find((candidate) => roles.includes(candidate)) || 'crew';
 
     await supabase.from('activity_logs').insert({
       user_id: user.id,
       user_name: profile?.full_name || user.email || 'Unknown',
-      user_role: (roleRow?.role as string) || 'crew',
+      user_role: resolvedRole,
       module,
       action,
       description,

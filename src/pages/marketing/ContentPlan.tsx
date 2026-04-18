@@ -31,8 +31,8 @@ const statusColors: Record<string, 'default' | 'secondary' | 'outline' | 'destru
 export default function ContentPlanPage() {
   const { user, role } = useAuth();
   const { toast } = useToast();
-  const canManage = role === 'management';
-  const canEdit = role === 'management' || role === 'pic';
+  const canManage = role === 'management' || role === 'admin';
+  const canEdit = role === 'management' || role === 'pic' || role === 'admin';
   const [records, setRecords] = useState<any[]>([]);
   const [form, setForm] = useState({ title: '', description: '', platform: 'instagram', scheduled_date: '', status: 'idea', rate_card: '' });
   const [submitting, setSubmitting] = useState(false);

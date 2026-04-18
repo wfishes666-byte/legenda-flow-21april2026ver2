@@ -12,7 +12,7 @@ import { format } from 'date-fns';
 export default function LeaveVerificationPage() {
   const { user, role } = useAuth();
   const { toast } = useToast();
-  const canManage = role === 'management';
+  const canManage = role === 'management' || role === 'admin';
   const [records, setRecords] = useState<any[]>([]);
   const [profiles, setProfiles] = useState<any[]>([]);
 

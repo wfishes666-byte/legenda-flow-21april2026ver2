@@ -26,7 +26,7 @@ export default function MaterialControlPage() {
   const { user, role } = useAuth();
   const { toast } = useToast();
   const { outlets, selectedOutlet, setSelectedOutlet } = useOutlets();
-  const canEdit = role === 'management' || role === 'pic' || role === 'stockman';
+  const canEdit = role === 'management' || role === 'pic' || role === 'stockman' || role === 'admin';
   const [recipes, setRecipes] = useState<any[]>([]);
   const [sales, setSales] = useState<any[]>([]);
 

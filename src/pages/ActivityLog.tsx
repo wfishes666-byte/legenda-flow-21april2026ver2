@@ -61,6 +61,7 @@ export default function ActivityLogPage() {
   });
 
   const roleColor = (role: string) => {
+    if (role === 'admin') return 'destructive';
     if (role === 'management') return 'default';
     if (role === 'pic') return 'secondary';
     return 'outline';

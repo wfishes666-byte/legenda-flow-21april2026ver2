@@ -47,8 +47,8 @@ export default function InventoryPage() {
   ]);
   const [toBuyList, setToBuyList] = useState<InventoryRecord[]>([]);
   const [history, setHistory] = useState<InventoryRecord[]>([]);
-  const canManage = role === 'management';
-  const canViewAll = role === 'management' || role === 'pic' || role === 'stockman';
+  const canManage = role === 'management' || role === 'admin';
+  const canViewAll = role === 'management' || role === 'pic' || role === 'stockman' || role === 'admin';
 
   const addRow = () =>
     setRows([...rows, { item_name: '', starting_stock: '', incoming_stock: '', ending_stock: '', minimum_threshold: '5' }]);

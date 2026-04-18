@@ -48,33 +48,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { data } = await supabase
       .from('user_roles')
       .select('role')
-      .eq('user_id', userId)
-      .limit(1)
-      .maybeSingle();
-    setRole((data?.role as AppRole) || 'crew');
+      .eq('user_id', userId);
+
+    const roles = (data?.map((row) => row.role as AppRole) || []);
+    const priority: AppRole[] = ['admin', 'management', 'pic', 'stockman', 'crew', 'staff'];
+    const resolvedRole = priority.find((candidate) => roles.includes(candidate)) || 'crew';
+    setRole(resolvedRole);
   };
 
   useEffect(() => {
+    const syncSession = async (nextSession: Session | null) => {
+      setSession(nextSession);
+      setUser(nextSession?.user ?? null);
+
+      if (nextSession?.user) {
+        await fetchRole(nextSession.user.id);
+      } else {
+        setRole(null);
+      }
+
+      setLoading(false);
+    };
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
-        if (session?.user) {
-          setTimeout(() => fetchRole(session.user.id), 0);
-        } else {
-          setRole(null);
-        }
-        setLoading(false);
+      (_event, nextSession) => {
+        setLoading(true);
+        setTimeout(() => {
+          void syncSession(nextSession);
+        }, 0);
       }
     );
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        fetchRole(session.user.id);
-      }
-      setLoading(false);
+    void supabase.auth.getSession().then(({ data: { session: currentSession } }) => {
+      void syncSession(currentSession);
     });
 
     return () => subscription.unsubscribe();

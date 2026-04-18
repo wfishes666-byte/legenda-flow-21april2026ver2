@@ -44,7 +44,7 @@ export default function StaffManagement() {
   const [profiles, setProfiles] = useState<StaffProfile[]>([]);
   const [editProfile, setEditProfile] = useState<StaffProfile | null>(null);
   const [saving, setSaving] = useState(false);
-  const canDelete = role === 'management';
+  const canDelete = role === 'management' || role === 'admin';
 
   const fetchProfiles = async () => {
     const { data } = await supabase.from('profiles').select('*').order('full_name');
