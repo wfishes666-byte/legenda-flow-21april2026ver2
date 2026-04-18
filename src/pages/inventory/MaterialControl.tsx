@@ -319,7 +319,27 @@ export default function MaterialControlPage() {
                   <form onSubmit={handleSaleSubmit} className="flex flex-col sm:flex-row gap-4">
                     <div className="flex-1 space-y-2">
                       <Label>Menu Item</Label>
-                      <Input value={saleItem} onChange={(e) => setSaleItem(e.target.value)} placeholder="Nama menu" required />
+                      {recipes.length > 0 ? (
+                        <>
+                          <Input
+                            list="recipe-menu-list"
+                            value={saleItem}
+                            onChange={(e) => setSaleItem(e.target.value)}
+                            placeholder="Pilih menu dari resep atau ketik manual"
+                            required
+                          />
+                          <datalist id="recipe-menu-list">
+                            {Array.from(new Set(recipes.map((r) => r.menu_item_name))).map((name) => (
+                              <option key={name} value={name} />
+                            ))}
+                          </datalist>
+                          <p className="text-xs text-muted-foreground">
+                            {recipes.length} resep tersedia. Pilih untuk sinkronisasi otomatis dengan estimasi bahan.
+                          </p>
+                        </>
+                      ) : (
+                        <Input value={saleItem} onChange={(e) => setSaleItem(e.target.value)} placeholder="Nama menu" required />
+                      )}
                     </div>
                     <div className="w-24 space-y-2">
                       <Label>Jumlah</Label>
