@@ -8,8 +8,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { useToast } from '@/hooks/use-toast';
-import { Activity, AlertCircle, CheckCircle2, Copy, KeyRound, RefreshCw, Search, XCircle } from 'lucide-react';
+import { Activity, AlertCircle, CalendarDays, ChevronDown, CheckCircle2, Copy, KeyRound, RefreshCw, Search, XCircle } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import { format } from 'date-fns';
 import { id as idLocale } from 'date-fns/locale';
@@ -77,6 +78,22 @@ export default function ActivityLogPage() {
     }
     return true;
   });
+
+  // Group filtered logs by date (yyyy-MM-dd)
+  const grouped = useMemo(() => {
+    const map = new Map<string, LogRow[]>();
+    for (const l of filtered) {
+      const key = format(new Date(l.created_at), 'yyyy-MM-dd');
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push(l);
+    }
+    return Array.from(map.entries()).sort((a, b) => (a[0] < b[0] ? 1 : -1));
+  }, [filtered]);
+
+  const [openDates, setOpenDates] = useState<Record<string, boolean>>({});
+  const toggleDate = (k: string) => setOpenDates((s) => ({ ...s, [k]: !(s[k] ?? false) }));
+  // Default: hari pertama (paling baru) terbuka, lainnya tertutup
+  const isDateOpen = (k: string, idx: number) => openDates[k] ?? idx === 0;
 
   const roleColor = (role: string) => {
     if (role === 'management') return 'default';
@@ -223,81 +240,116 @@ export default function ActivityLogPage() {
               </Select>
             </div>
 
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-border text-left text-muted-foreground">
-                    <th className="p-3 font-medium whitespace-nowrap">Waktu</th>
-                    <th className="p-3 font-medium">Pengguna</th>
-                    <th className="p-3 font-medium">Role</th>
-                    <th className="p-3 font-medium">Modul</th>
-                    <th className="p-3 font-medium">Aksi</th>
-                    <th className="p-3 font-medium">Deskripsi</th>
-                    <th className="p-3 font-medium text-right">Tindakan</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {loading ? (
-                    <tr><td colSpan={7} className="p-8 text-center text-muted-foreground">Memuat...</td></tr>
-                  ) : filtered.length === 0 ? (
-                    <tr><td colSpan={7} className="p-8 text-center text-muted-foreground">Belum ada log.</td></tr>
-                  ) : (
-                    filtered.map((l) => {
-                      const reset = isPwdReset(l);
-                      const reqStatus = reset ? (l.metadata?.status as string | undefined) : null;
-                      // Cari status terbaru dari row log? metadata tidak ter-update otomatis, jadi kita
-                      // andalkan klik dialog untuk fetch status real-time. Untuk styling baris,
-                      // gunakan styling merah hanya jika belum di-resolve berdasarkan metadata-nya
-                      // (pending/link_generated). Setelah resolved, baris jadi muted.
-                      // Catatan: metadata di activity_logs statis; admin yang sudah handle akan
-                      // tetap melihat row "merah" sampai refresh — kita tetap berikan klik untuk
-                      // membuka dialog yang akan memuat status terbaru.
-                      const rowClass = reset
-                        ? 'bg-destructive/10 hover:bg-destructive/15 cursor-pointer'
-                        : 'hover:bg-muted/30';
-                      return (
-                        <tr
-                          key={l.id}
-                          className={`border-b border-border/50 transition-colors ${rowClass}`}
-                          onClick={reset && canManage ? () => openResetDialog(l) : undefined}
-                        >
-                          <td className="p-3 whitespace-nowrap text-xs text-muted-foreground">
-                            {format(new Date(l.created_at), 'dd MMM yyyy HH:mm:ss', { locale: idLocale })}
-                          </td>
-                          <td className="p-3 font-medium">{l.user_name}</td>
-                          <td className="p-3"><Badge variant={roleColor(l.user_role) as any}>{l.user_role}</Badge></td>
-                          <td className="p-3">
-                            {reset ? (
-                              <Badge variant="destructive" className="gap-1">
-                                <AlertCircle className="w-3 h-3" /> {l.module}
-                              </Badge>
-                            ) : (
-                              <Badge variant="outline">{l.module}</Badge>
-                            )}
-                          </td>
-                          <td className="p-3">
-                            {reset ? <span className="text-destructive font-semibold">{l.action}</span> : l.action}
-                          </td>
-                          <td className="p-3 text-muted-foreground max-w-md">{l.description}</td>
-                          <td className="p-3 text-right">
-                            {reset && canManage ? (
-                              <Button
-                                size="sm"
-                                variant="destructive"
-                                onClick={(e) => { e.stopPropagation(); openResetDialog(l); }}
-                              >
-                                <KeyRound className="w-3.5 h-3.5 mr-1" /> Tangani
-                              </Button>
-                            ) : null}
-                          </td>
-                        </tr>
-                      );
-                    })
-                  )}
-                </tbody>
-              </table>
-            </div>
-            <p className="text-xs text-muted-foreground">Menampilkan {filtered.length} dari {logs.length} log (maksimal 500 terbaru).</p>
+            {loading ? (
+              <div className="p-8 text-center text-muted-foreground">Memuat...</div>
+            ) : grouped.length === 0 ? (
+              <div className="p-8 text-center text-muted-foreground">Belum ada log.</div>
+            ) : (
+              <div className="space-y-3">
+                {grouped.map(([dateKey, items], idx) => {
+                  const open = isDateOpen(dateKey, idx);
+                  const dateObj = new Date(dateKey);
+                  const pendingResetCount = items.filter(
+                    (l) => isPwdReset(l) && l.metadata?.status !== 'completed' && l.metadata?.status !== 'unsolved'
+                  ).length;
+                  return (
+                    <Collapsible key={dateKey} open={open} onOpenChange={() => toggleDate(dateKey)}>
+                      <CollapsibleTrigger className="w-full flex items-center justify-between gap-3 px-4 py-3 rounded-lg border border-border bg-muted/30 hover:bg-muted/50 transition-colors text-left">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <CalendarDays className="w-4 h-4 text-muted-foreground shrink-0" />
+                          <div className="min-w-0">
+                            <div className="font-semibold text-sm">
+                              {format(dateObj, 'EEEE, dd MMMM yyyy', { locale: idLocale })}
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              {items.length} aktivitas
+                              {pendingResetCount > 0 && (
+                                <span className="ml-2 text-destructive font-medium">
+                                  • {pendingResetCount} reset belum ditangani
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          {pendingResetCount > 0 && (
+                            <Badge variant="destructive" className="gap-1">
+                              <AlertCircle className="w-3 h-3" /> {pendingResetCount}
+                            </Badge>
+                          )}
+                          <ChevronDown
+                            className={`w-4 h-4 text-muted-foreground transition-transform ${open ? 'rotate-180' : ''}`}
+                          />
+                        </div>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent>
+                        <div className="overflow-x-auto mt-2 rounded-lg border border-border">
+                          <table className="w-full text-sm">
+                            <thead>
+                              <tr className="border-b border-border text-left text-muted-foreground bg-muted/20">
+                                <th className="p-3 font-medium whitespace-nowrap">Waktu</th>
+                                <th className="p-3 font-medium">Pengguna</th>
+                                <th className="p-3 font-medium">Role</th>
+                                <th className="p-3 font-medium">Modul</th>
+                                <th className="p-3 font-medium">Aksi</th>
+                                <th className="p-3 font-medium">Deskripsi</th>
+                                <th className="p-3 font-medium text-right">Tindakan</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {items.map((l) => {
+                                const reset = isPwdReset(l);
+                                const rowClass = reset
+                                  ? 'bg-destructive/10 hover:bg-destructive/15 cursor-pointer'
+                                  : 'hover:bg-muted/30';
+                                return (
+                                  <tr
+                                    key={l.id}
+                                    className={`border-b border-border/50 last:border-0 transition-colors ${rowClass}`}
+                                    onClick={reset && canManage ? () => openResetDialog(l) : undefined}
+                                  >
+                                    <td className="p-3 whitespace-nowrap text-xs text-muted-foreground">
+                                      {format(new Date(l.created_at), 'HH:mm:ss', { locale: idLocale })}
+                                    </td>
+                                    <td className="p-3 font-medium">{l.user_name}</td>
+                                    <td className="p-3"><Badge variant={roleColor(l.user_role) as any}>{l.user_role}</Badge></td>
+                                    <td className="p-3">
+                                      {reset ? (
+                                        <Badge variant="destructive" className="gap-1">
+                                          <AlertCircle className="w-3 h-3" /> {l.module}
+                                        </Badge>
+                                      ) : (
+                                        <Badge variant="outline">{l.module}</Badge>
+                                      )}
+                                    </td>
+                                    <td className="p-3">
+                                      {reset ? <span className="text-destructive font-semibold">{l.action}</span> : l.action}
+                                    </td>
+                                    <td className="p-3 text-muted-foreground max-w-md">{l.description}</td>
+                                    <td className="p-3 text-right">
+                                      {reset && canManage ? (
+                                        <Button
+                                          size="sm"
+                                          variant="destructive"
+                                          onClick={(e) => { e.stopPropagation(); openResetDialog(l); }}
+                                        >
+                                          <KeyRound className="w-3.5 h-3.5 mr-1" /> Tangani
+                                        </Button>
+                                      ) : null}
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                      </CollapsibleContent>
+                    </Collapsible>
+                  );
+                })}
+              </div>
+            )}
+            <p className="text-xs text-muted-foreground">Menampilkan {filtered.length} dari {logs.length} log (maksimal 500 terbaru), dikelompokkan per tanggal.</p>
           </CardContent>
         </Card>
       </div>

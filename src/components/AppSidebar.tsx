@@ -73,7 +73,7 @@ export default function AppSidebar() {
 
       <aside
         className={cn(
-          'fixed top-0 left-0 z-50 h-[100dvh] w-72 max-w-[85vw] bg-sidebar text-sidebar-foreground flex flex-col transition-transform duration-300 md:w-64 md:translate-x-0 md:z-40 overflow-y-auto overscroll-contain shadow-2xl md:shadow-none',
+          'fixed top-0 left-0 z-50 h-[100dvh] w-72 max-w-[85vw] bg-sidebar text-sidebar-foreground flex flex-col transition-transform duration-300 md:w-64 md:translate-x-0 md:z-40 shadow-2xl md:shadow-none',
           open ? 'translate-x-0' : '-translate-x-full'
         )}
         style={{ paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)' }}
@@ -95,7 +95,7 @@ export default function AppSidebar() {
           <p className="text-xs text-sidebar-foreground/60 mt-2">Business Management</p>
         </div>
 
-        <nav className="flex-1 p-3 space-y-1">
+        <nav className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-3 space-y-1">
           {visibleGroups.map((group) => {
             const isGroupActive = group.items.some((item) => location.pathname === item.to);
 
