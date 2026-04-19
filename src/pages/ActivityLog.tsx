@@ -8,8 +8,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { useToast } from '@/hooks/use-toast';
-import { Activity, AlertCircle, CheckCircle2, Copy, KeyRound, RefreshCw, Search, XCircle } from 'lucide-react';
+import { Activity, AlertCircle, CalendarDays, ChevronDown, CheckCircle2, Copy, KeyRound, RefreshCw, Search, XCircle } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import { format } from 'date-fns';
 import { id as idLocale } from 'date-fns/locale';
