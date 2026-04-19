@@ -37,6 +37,15 @@ export default function Login() {
   const { signIn, signUp } = useAuth();
   const { toast } = useToast();
 
+  // Make html background match the dark login page (fix uneven black background
+  // in forced-desktop mode where body is scaled and html shows through).
+  useEffect(() => {
+    const html = document.documentElement;
+    const prev = html.style.backgroundColor;
+    html.style.backgroundColor = '#0a0a0a'; // neutral-950
+    return () => { html.style.backgroundColor = prev; };
+  }, []);
+
   // Load outlets for signup outlet selector
   useEffect(() => {
     if (!isSignUp) return;
