@@ -687,6 +687,7 @@ export type Database = {
           link_expires_at: string | null
           message: string
           reset_link: string | null
+          resolution_notes: string
           status: string
           token_hash: string | null
           updated_at: string
@@ -702,6 +703,7 @@ export type Database = {
           link_expires_at?: string | null
           message?: string
           reset_link?: string | null
+          resolution_notes?: string
           status?: string
           token_hash?: string | null
           updated_at?: string
@@ -717,6 +719,7 @@ export type Database = {
           link_expires_at?: string | null
           message?: string
           reset_link?: string | null
+          resolution_notes?: string
           status?: string
           token_hash?: string | null
           updated_at?: string
