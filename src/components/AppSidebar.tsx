@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { useEffect, useState } from 'react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import ThemeToggle from './ThemeToggle';
+import ViewModeToggle from './ViewModeToggle';
 import logoKop from '@/assets/logo-kop.png';
 import { useAppSettings } from '@/hooks/useAppSettings';
 import { MENU_GROUPS } from '@/lib/menuRegistry';
@@ -156,6 +157,7 @@ export default function AppSidebar() {
 
         <div className="p-4 border-t border-sidebar-border space-y-1">
           <ThemeToggle variant="sidebar" />
+          <ViewModeToggle variant="sidebar" />
           <Button
             variant="ghost"
             className="w-full justify-start gap-3 text-sidebar-foreground/70 hover:text-destructive hover:bg-destructive/10"

@@ -123,3 +123,24 @@
     @apply bg-card/80 backdrop-blur-sm border border-border/50 shadow-sm;
   }
 }
+
+/* ====== Forced View Mode (Desktop / Mobile preview frame) ====== */
+/* Mode Mobile: bingkai max 480px di tengah layar, simulasi ponsel */
+html.force-mobile body {
+  max-width: 480px;
+  margin-left: auto;
+  margin-right: auto;
+  box-shadow: 0 0 0 1px hsl(var(--border)), 0 20px 60px -20px hsl(var(--foreground) / 0.25);
+  min-height: 100dvh;
+  background: hsl(var(--background));
+}
+@media (min-width: 768px) {
+  html.force-mobile {
+    background: hsl(var(--muted));
+  }
+}
+
+/* Mode Desktop: paksa lebar minimal walau di layar kecil (akan muncul horizontal scroll) */
+html.force-desktop body {
+  min-width: 1280px;
+}

@@ -6,6 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth, AppRole } from "@/hooks/useAuth";
 import { ThemeProvider } from "@/hooks/useTheme";
 import { AppSettingsProvider } from "@/hooks/useAppSettings";
+import { ViewModeProvider } from "@/hooks/useViewMode";
 import Login from "./pages/Login";
 import SettingsPage from "./pages/Settings";
 import ProfilePage from "./pages/Profile";
@@ -112,15 +113,17 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <ThemeProvider>
       <AppSettingsProvider>
-        <TooltipProvider>
-          <Toaster />
-          <Sonner />
-          <BrowserRouter>
-            <AuthProvider>
-              <AppRoutes />
-            </AuthProvider>
-          </BrowserRouter>
-        </TooltipProvider>
+        <ViewModeProvider>
+          <TooltipProvider>
+            <Toaster />
+            <Sonner />
+            <BrowserRouter>
+              <AuthProvider>
+                <AppRoutes />
+              </AuthProvider>
+            </BrowserRouter>
+          </TooltipProvider>
+        </ViewModeProvider>
       </AppSettingsProvider>
     </ThemeProvider>
   </QueryClientProvider>
