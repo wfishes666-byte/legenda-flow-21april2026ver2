@@ -10,7 +10,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
     <div className="min-h-[100dvh] bg-background">
       <AppSidebar />
       <main
-        className="relative md:ml-64 min-h-[100dvh] px-3 pt-16 pb-6 sm:px-4 sm:pt-20 md:p-8 max-w-full overflow-x-hidden"
+        className="relative md:ml-64 min-h-[100dvh] px-3 pt-16 pb-6 sm:px-4 sm:pt-20 md:px-6 md:pt-8 md:pb-8 lg:px-8 max-w-full overflow-x-hidden"
         style={{ paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom))' }}
       >
         {settings.showBgArtwork && (
@@ -29,7 +29,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
             />
           </>
         )}
-        <div className="relative z-10">
+        <div className="relative z-10 w-full max-w-[1440px] mx-auto">
           {children}
         </div>
       </main>
