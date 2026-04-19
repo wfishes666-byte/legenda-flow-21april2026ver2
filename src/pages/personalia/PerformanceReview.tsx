@@ -9,7 +9,8 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
-import { ClipboardList, Save, Store, Pencil, Trash2, X } from 'lucide-react';
+import { ClipboardList, Save, Pencil, Trash2, X } from 'lucide-react';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
 import { useMenuPermissions } from '@/hooks/useMenuPermissions';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
@@ -254,8 +255,6 @@ export default function PerformanceReviewPage() {
     return 'destructive';
   };
 
-  const outletPills = [{ id: ALL, name: 'Semua' }, ...outlets];
-
   return (
     <AppLayout>
       <div className="max-w-3xl mx-auto space-y-6">
@@ -263,30 +262,28 @@ export default function PerformanceReviewPage() {
           <ClipboardList className="w-7 h-7" /> Penilaian Kinerja
         </h1>
 
-        {/* Outlet filter pills */}
+        {/* Outlet filter tabs */}
         <Card className="glass-card">
-          <CardContent className="p-3">
-            <div className="flex items-center gap-2 overflow-x-auto">
-              <Store className="w-4 h-4 text-muted-foreground shrink-0 ml-1" />
-              {outletPills.map((o) => {
-                const active = outletId === o.id;
-                return (
-                  <button
+          <CardContent className="p-4">
+            <Tabs value={outletId} onValueChange={setOutletId}>
+              <TabsList className="flex-wrap h-auto bg-transparent border-b border-border w-full justify-start rounded-none p-0">
+                <TabsTrigger
+                  value={ALL}
+                  className="data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none data-[state=active]:bg-transparent data-[state=active]:shadow-none"
+                >
+                  Semua Outlet
+                </TabsTrigger>
+                {outlets.map((o) => (
+                  <TabsTrigger
                     key={o.id}
-                    type="button"
-                    onClick={() => setOutletId(o.id)}
-                    className={cn(
-                      'px-4 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-colors uppercase tracking-wide',
-                      active
-                        ? 'bg-primary text-primary-foreground shadow'
-                        : 'bg-muted text-muted-foreground hover:bg-muted/70',
-                    )}
+                    value={o.id}
+                    className="data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none data-[state=active]:bg-transparent data-[state=active]:shadow-none"
                   >
                     {o.name}
-                  </button>
-                );
-              })}
-            </div>
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+            </Tabs>
           </CardContent>
         </Card>
 
