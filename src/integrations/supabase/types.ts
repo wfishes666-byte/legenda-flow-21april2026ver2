@@ -676,6 +676,48 @@ export type Database = {
         }
         Relationships: []
       }
+      password_reset_requests: {
+        Row: {
+          created_at: string
+          email: string
+          full_name: string
+          handled_at: string | null
+          handled_by: string | null
+          id: string
+          link_expires_at: string | null
+          message: string
+          reset_link: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          full_name?: string
+          handled_at?: string | null
+          handled_by?: string | null
+          id?: string
+          link_expires_at?: string | null
+          message?: string
+          reset_link?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          full_name?: string
+          handled_at?: string | null
+          handled_by?: string | null
+          id?: string
+          link_expires_at?: string | null
+          message?: string
+          reset_link?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       payroll: {
         Row: {
           absence_deduction: number | null
