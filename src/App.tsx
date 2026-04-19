@@ -8,6 +8,8 @@ import { ThemeProvider } from "@/hooks/useTheme";
 import { AppSettingsProvider } from "@/hooks/useAppSettings";
 import { ViewModeProvider } from "@/hooks/useViewMode";
 import Login from "./pages/Login";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
 import SettingsPage from "./pages/Settings";
 import ProfilePage from "./pages/Profile";
 import DashboardPage from "./pages/Dashboard";
@@ -60,6 +62,8 @@ function AppRoutes() {
   return (
     <Routes>
       <Route path="/login" element={user ? <Navigate to="/profile" replace /> : <Login />} />
+      <Route path="/forgot-password" element={<ForgotPassword />} />
+      <Route path="/reset-password" element={<ResetPassword />} />
       <Route path="/" element={<Navigate to={user ? "/profile" : "/login"} replace />} />
 
       {/* Profil */}
