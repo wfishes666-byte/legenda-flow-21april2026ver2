@@ -59,7 +59,6 @@ export const MENU_GROUPS: MenuGroupDef[] = [
       { key: 'personalia.punishment', to: '/personalia/punishment', icon: AlertTriangle, label: 'Punishment & SP', defaultRoles: ['admin', 'management', 'pic'] },
       { key: 'personalia.leave', to: '/personalia/leave', icon: CalendarDays, label: 'Verifikasi Cuti', defaultRoles: ['admin', 'management', 'pic'] },
       { key: 'personalia.payroll', to: '/personalia/payroll', icon: DollarSign, label: 'Payroll', defaultRoles: ['admin', 'management', 'pic'] },
-      { key: 'personalia.activity', to: '/activity-log', icon: Activity, label: 'Log Kegiatan', defaultRoles: ['admin', 'management'] },
       { key: 'personalia.profile', to: '/profile', icon: UserCircle, label: 'Profil Saya', defaultRoles: ['admin', 'management', 'pic', 'crew', 'stockman', 'staff'] },
     ],
   },
