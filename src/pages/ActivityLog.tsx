@@ -9,7 +9,8 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
-import { Activity, AlertCircle, Copy, KeyRound, RefreshCw, Search } from 'lucide-react';
+import { Activity, AlertCircle, CheckCircle2, Copy, KeyRound, RefreshCw, Search, XCircle } from 'lucide-react';
+import { Textarea } from '@/components/ui/textarea';
 import { format } from 'date-fns';
 import { id as idLocale } from 'date-fns/locale';
 
@@ -43,6 +44,8 @@ export default function ActivityLogPage() {
   const [generating, setGenerating] = useState(false);
   const [generatedLink, setGeneratedLink] = useState<string | null>(null);
   const [existingStatus, setExistingStatus] = useState<string | null>(null);
+  const [resolutionNotes, setResolutionNotes] = useState('');
+  const [savingResolution, setSavingResolution] = useState(false);
 
   const fetchLogs = async () => {
     setLoading(true);
@@ -91,16 +94,18 @@ export default function ActivityLogPage() {
     setActiveEmail(email);
     setGeneratedLink(null);
     setExistingStatus(null);
+    setResolutionNotes('');
     setOpenLink(true);
 
     // Cek jika sudah pernah di-generate
     const { data } = await supabase
       .from('password_reset_requests')
-      .select('reset_link, status, link_expires_at')
+      .select('reset_link, status, link_expires_at, resolution_notes')
       .eq('id', reqId)
       .maybeSingle();
     if (data) {
       setExistingStatus(data.status);
+      setResolutionNotes((data as any).resolution_notes || '');
       if (data.reset_link && data.status === 'link_generated') {
         const expired = data.link_expires_at && new Date(data.link_expires_at) < new Date();
         if (!expired) setGeneratedLink(data.reset_link);
@@ -135,12 +140,45 @@ export default function ActivityLogPage() {
     toast({ title: 'Tersalin', description: 'Link reset password disalin ke clipboard.' });
   };
 
-  const markCompleted = async () => {
+  const resolveRequest = async (resolution: 'solved' | 'unsolved') => {
     if (!activeRequestId) return;
-    await supabase.from('password_reset_requests').update({ status: 'completed' }).eq('id', activeRequestId);
-    toast({ title: 'Permintaan ditandai selesai' });
+    setSavingResolution(true);
+    const newStatus = resolution === 'solved' ? 'completed' : 'unsolved';
+    const { data: userRes } = await supabase.auth.getUser();
+    const { error } = await supabase
+      .from('password_reset_requests')
+      .update({
+        status: newStatus,
+        resolution_notes: resolutionNotes,
+        handled_by: userRes.user?.id ?? null,
+        handled_at: new Date().toISOString(),
+      })
+      .eq('id', activeRequestId);
+    setSavingResolution(false);
+    if (error) {
+      toast({ title: 'Gagal menyimpan', description: error.message, variant: 'destructive' });
+      return;
+    }
+    toast({
+      title: resolution === 'solved' ? 'Ditandai Solved' : 'Ditandai Unsolved',
+      description: resolution === 'solved' ? 'Permintaan telah diselesaikan.' : 'Permintaan ditandai belum/tidak diselesaikan.',
+    });
+    setExistingStatus(newStatus);
     setOpenLink(false);
+    fetchLogs();
   };
+
+  const statusBadge = (s: string | null) => {
+    switch (s) {
+      case 'pending': return <Badge variant="destructive">Pending</Badge>;
+      case 'link_generated': return <Badge variant="default">Link Aktif</Badge>;
+      case 'completed': return <Badge className="bg-green-600 hover:bg-green-600/90 text-white border-transparent">Solved</Badge>;
+      case 'unsolved': return <Badge variant="secondary">Unsolved</Badge>;
+      default: return null;
+    }
+  };
+
+  const isResolved = (s: string | null) => s === 'completed' || s === 'unsolved';
 
   return (
     <AppLayout>
@@ -206,12 +244,22 @@ export default function ActivityLogPage() {
                   ) : (
                     filtered.map((l) => {
                       const reset = isPwdReset(l);
+                      const reqStatus = reset ? (l.metadata?.status as string | undefined) : null;
+                      // Cari status terbaru dari row log? metadata tidak ter-update otomatis, jadi kita
+                      // andalkan klik dialog untuk fetch status real-time. Untuk styling baris,
+                      // gunakan styling merah hanya jika belum di-resolve berdasarkan metadata-nya
+                      // (pending/link_generated). Setelah resolved, baris jadi muted.
+                      // Catatan: metadata di activity_logs statis; admin yang sudah handle akan
+                      // tetap melihat row "merah" sampai refresh — kita tetap berikan klik untuk
+                      // membuka dialog yang akan memuat status terbaru.
+                      const rowClass = reset
+                        ? 'bg-destructive/10 hover:bg-destructive/15 cursor-pointer'
+                        : 'hover:bg-muted/30';
                       return (
                         <tr
                           key={l.id}
-                          className={`border-b border-border/50 transition-colors ${
-                            reset ? 'bg-destructive/10 hover:bg-destructive/15' : 'hover:bg-muted/30'
-                          }`}
+                          className={`border-b border-border/50 transition-colors ${rowClass}`}
+                          onClick={reset && canManage ? () => openResetDialog(l) : undefined}
                         >
                           <td className="p-3 whitespace-nowrap text-xs text-muted-foreground">
                             {format(new Date(l.created_at), 'dd MMM yyyy HH:mm:ss', { locale: idLocale })}
@@ -233,8 +281,12 @@ export default function ActivityLogPage() {
                           <td className="p-3 text-muted-foreground max-w-md">{l.description}</td>
                           <td className="p-3 text-right">
                             {reset && canManage ? (
-                              <Button size="sm" variant="destructive" onClick={() => openResetDialog(l)}>
-                                <KeyRound className="w-3.5 h-3.5 mr-1" /> Generate Link
+                              <Button
+                                size="sm"
+                                variant="destructive"
+                                onClick={(e) => { e.stopPropagation(); openResetDialog(l); }}
+                              >
+                                <KeyRound className="w-3.5 h-3.5 mr-1" /> Tangani
                               </Button>
                             ) : null}
                           </td>
@@ -251,50 +303,81 @@ export default function ActivityLogPage() {
       </div>
 
       <Dialog open={openLink} onOpenChange={setOpenLink}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <KeyRound className="w-5 h-5" /> Link Reset Password
+              <KeyRound className="w-5 h-5" /> Permintaan Reset Password
             </DialogTitle>
-            <DialogDescription>
-              Untuk: <span className="font-semibold text-foreground">{activeEmail}</span>
-              {existingStatus === 'completed' && <span className="ml-2 text-xs">(sudah selesai)</span>}
+            <DialogDescription className="flex items-center gap-2 flex-wrap">
+              <span>Untuk: <span className="font-semibold text-foreground">{activeEmail}</span></span>
+              {statusBadge(existingStatus)}
             </DialogDescription>
           </DialogHeader>
 
-          {!generatedLink ? (
-            <div className="space-y-3 text-sm text-muted-foreground">
-              <p>
-                Klik tombol di bawah untuk membuat link reset password 1x pakai. Link berlaku selama <strong>1 jam</strong>.
-                Salin & kirim ke user secara manual (WhatsApp, dll).
-              </p>
-              <Button onClick={generateLink} disabled={generating} className="w-full">
-                {generating ? 'Memproses...' : 'Generate Link Sekarang'}
-              </Button>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              <div className="rounded-md border border-border bg-muted/40 p-3 break-all text-xs font-mono">
-                {generatedLink}
-              </div>
-              <div className="flex gap-2">
-                <Button onClick={copyLink} className="flex-1">
-                  <Copy className="w-4 h-4 mr-2" /> Salin Link
-                </Button>
-                <Button variant="outline" onClick={generateLink} disabled={generating}>
-                  {generating ? '...' : 'Generate Ulang'}
-                </Button>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Kirim link ini ke user. Saat user membuka link, ia langsung dialihkan ke halaman ganti password.
-              </p>
-            </div>
+          {!isResolved(existingStatus) && (
+            <>
+              {!generatedLink ? (
+                <div className="space-y-3 text-sm text-muted-foreground">
+                  <p>
+                    Buat link reset password 1x pakai (berlaku <strong>1 jam</strong>). Salin & kirim ke user secara manual.
+                  </p>
+                  <Button onClick={generateLink} disabled={generating} className="w-full">
+                    {generating ? 'Memproses...' : 'Generate Link Sekarang'}
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <div className="rounded-md border border-border bg-muted/40 p-3 break-all text-xs font-mono">
+                    {generatedLink}
+                  </div>
+                  <div className="flex gap-2">
+                    <Button onClick={copyLink} className="flex-1">
+                      <Copy className="w-4 h-4 mr-2" /> Salin Link
+                    </Button>
+                    <Button variant="outline" onClick={generateLink} disabled={generating}>
+                      {generating ? '...' : 'Generate Ulang'}
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </>
           )}
 
-          <DialogFooter>
+          <div className="space-y-2 pt-2 border-t border-border">
+            <label className="text-sm font-medium">Catatan Penyelesaian</label>
+            <Textarea
+              value={resolutionNotes}
+              onChange={(e) => setResolutionNotes(e.target.value)}
+              placeholder="Mis: Link sudah dikirim via WhatsApp / User salah email / dll."
+              rows={3}
+              disabled={isResolved(existingStatus)}
+            />
+            <p className="text-xs text-muted-foreground">
+              {isResolved(existingStatus)
+                ? 'Permintaan sudah ditandai. Catatan tidak dapat diubah.'
+                : 'Tandai permintaan ini sebagai Solved (selesai dibantu) atau Unsolved (dibatalkan / tidak valid).'}
+            </p>
+          </div>
+
+          <DialogFooter className="gap-2 sm:gap-2">
             <Button variant="ghost" onClick={() => setOpenLink(false)}>Tutup</Button>
-            {generatedLink && existingStatus !== 'completed' && (
-              <Button variant="secondary" onClick={markCompleted}>Tandai Selesai</Button>
+            {!isResolved(existingStatus) && (
+              <>
+                <Button
+                  variant="outline"
+                  onClick={() => resolveRequest('unsolved')}
+                  disabled={savingResolution}
+                >
+                  <XCircle className="w-4 h-4 mr-2" /> Tandai Unsolved
+                </Button>
+                <Button
+                  onClick={() => resolveRequest('solved')}
+                  disabled={savingResolution}
+                  className="bg-green-600 hover:bg-green-600/90 text-white"
+                >
+                  <CheckCircle2 className="w-4 h-4 mr-2" /> Tandai Solved
+                </Button>
+              </>
             )}
           </DialogFooter>
         </DialogContent>
