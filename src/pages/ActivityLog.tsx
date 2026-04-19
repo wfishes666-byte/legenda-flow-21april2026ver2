@@ -79,6 +79,22 @@ export default function ActivityLogPage() {
     return true;
   });
 
+  // Group filtered logs by date (yyyy-MM-dd)
+  const grouped = useMemo(() => {
+    const map = new Map<string, LogRow[]>();
+    for (const l of filtered) {
+      const key = format(new Date(l.created_at), 'yyyy-MM-dd');
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push(l);
+    }
+    return Array.from(map.entries()).sort((a, b) => (a[0] < b[0] ? 1 : -1));
+  }, [filtered]);
+
+  const [openDates, setOpenDates] = useState<Record<string, boolean>>({});
+  const toggleDate = (k: string) => setOpenDates((s) => ({ ...s, [k]: !(s[k] ?? false) }));
+  // Default: hari pertama (paling baru) terbuka, lainnya tertutup
+  const isDateOpen = (k: string, idx: number) => openDates[k] ?? idx === 0;
+
   const roleColor = (role: string) => {
     if (role === 'management') return 'default';
     if (role === 'pic') return 'secondary';
