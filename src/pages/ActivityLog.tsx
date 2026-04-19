@@ -271,9 +271,12 @@ export default function ActivityLogPage() {
                 {grouped.map(([dateKey, items], idx) => {
                   const open = isDateOpen(dateKey, idx);
                   const dateObj = new Date(dateKey);
-                  const pendingResetCount = items.filter(
-                    (l) => isPwdReset(l) && l.metadata?.status !== 'completed' && l.metadata?.status !== 'unsolved'
-                  ).length;
+                  const pendingResetCount = items.filter((l) => {
+                    if (!isPwdReset(l)) return false;
+                    const reqId = l.metadata?.request_id;
+                    const status = reqId ? resetStatusMap[reqId] : l.metadata?.status;
+                    return status !== 'completed' && status !== 'unsolved';
+                  }).length;
                   return (
                     <Collapsible key={dateKey} open={open} onOpenChange={() => toggleDate(dateKey)}>
                       <CollapsibleTrigger className="w-full flex items-center justify-between gap-3 px-4 py-3 rounded-lg border border-border bg-muted/30 hover:bg-muted/50 transition-colors text-left">
