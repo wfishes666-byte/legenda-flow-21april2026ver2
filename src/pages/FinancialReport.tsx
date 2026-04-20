@@ -61,6 +61,7 @@ export default function FinancialReport() {
   const { toast } = useToast();
   const { outlets, selectedOutlet, setSelectedOutlet } = useOutlets();
   const [submitting, setSubmitting] = useState(false);
+  const [exportOpen, setExportOpen] = useState(false);
   const printRef = useRef<HTMLDivElement>(null);
 
   const [form, setForm] = useState({
