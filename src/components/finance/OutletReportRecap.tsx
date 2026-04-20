@@ -61,6 +61,9 @@ interface Props {
 
 export default function OutletReportRecap({ mode }: Props) {
   const { outlets } = useOutlets();
+  const { role } = useAuth();
+  const { toast } = useToast();
+  const isAdmin = role === 'admin';
   const [period, setPeriod] = useState<PeriodPreset>('30d');
   const [customFrom, setCustomFrom] = useState<Date | undefined>();
   const [customTo, setCustomTo] = useState<Date | undefined>();
@@ -68,6 +71,10 @@ export default function OutletReportRecap({ mode }: Props) {
   const [reports, setReports] = useState<OutletReport[]>([]);
   const [expensesByReport, setExpensesByReport] = useState<Map<string, number>>(new Map());
   const [loading, setLoading] = useState(false);
+  const [editing, setEditing] = useState<OutletReport | null>(null);
+  const [editForm, setEditForm] = useState<Record<string, number>>({});
+  const [saving, setSaving] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   const range = useMemo(() => computeRange(period, { from: customFrom, to: customTo }), [period, customFrom, customTo]);
 
