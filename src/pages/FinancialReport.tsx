@@ -12,10 +12,11 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Trash2, Save, Camera, X, FileSpreadsheet, Printer, FileText, Image as ImageIcon, Eraser, History, FolderOpen, BarChart3, ListChecks } from 'lucide-react';
+import { Plus, Trash2, Save, Camera, X, FileSpreadsheet, Printer, FileText, Image as ImageIcon, Eraser, History, FolderOpen, BarChart3, ListChecks, ChevronDown } from 'lucide-react';
 import { format } from 'date-fns';
 import * as XLSX from 'xlsx';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import OutletReportRecap from '@/components/finance/OutletReportRecap';
 
 interface ExpenseRow {
@@ -60,6 +61,7 @@ export default function FinancialReport() {
   const { toast } = useToast();
   const { outlets, selectedOutlet, setSelectedOutlet } = useOutlets();
   const [submitting, setSubmitting] = useState(false);
+  const [exportOpen, setExportOpen] = useState(false);
   const printRef = useRef<HTMLDivElement>(null);
 
   const [form, setForm] = useState({
@@ -591,23 +593,35 @@ export default function FinancialReport() {
                   <Label className="text-xs uppercase">Catatan</Label>
                   <Textarea placeholder="Catatan tambahan..." value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
                 </div>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                  <Button type="submit" disabled={submitting} className="col-span-2 md:col-span-1">
-                    <Save className="w-4 h-4 mr-1" /> {submitting ? 'Menyimpan...' : 'Simpan'}
-                  </Button>
-                  <Button type="button" variant="outline" onClick={handleExportExcel}>
-                    <FileSpreadsheet className="w-4 h-4 mr-1" /> Excel
-                  </Button>
-                  <Button type="button" variant="outline" onClick={() => handlePrint('receipt')}>
-                    <Printer className="w-4 h-4 mr-1" /> Struk
-                  </Button>
-                  <Button type="button" variant="outline" onClick={() => handlePrint('pdf')}>
-                    <FileText className="w-4 h-4 mr-1" /> Arsip+Nota
-                  </Button>
-                </div>
-                <Button type="button" variant="ghost" size="sm" onClick={() => handlePrint('attachment')} className="w-full">
-                  <ImageIcon className="w-4 h-4 mr-1" /> Cetak Hanya Lampiran Nota
+                <Button type="submit" disabled={submitting} className="w-full">
+                  <Save className="w-4 h-4 mr-1" /> {submitting ? 'Menyimpan...' : 'Simpan Laporan'}
                 </Button>
+                <Collapsible open={exportOpen} onOpenChange={setExportOpen}>
+                  <CollapsibleTrigger asChild>
+                    <Button type="button" variant="outline" className="w-full justify-between">
+                      <span className="flex items-center">
+                        <FolderOpen className="w-4 h-4 mr-2" /> Ekspor Laporan
+                      </span>
+                      <ChevronDown className={`w-4 h-4 transition-transform ${exportOpen ? 'rotate-180' : ''}`} />
+                    </Button>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="pt-2">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      <Button type="button" variant="outline" size="sm" onClick={handleExportExcel} className="justify-start">
+                        <FileSpreadsheet className="w-4 h-4 mr-2" /> Excel
+                      </Button>
+                      <Button type="button" variant="outline" size="sm" onClick={() => handlePrint('receipt')} className="justify-start">
+                        <Printer className="w-4 h-4 mr-2" /> Struk
+                      </Button>
+                      <Button type="button" variant="outline" size="sm" onClick={() => handlePrint('pdf')} className="justify-start">
+                        <FileText className="w-4 h-4 mr-2" /> Arsip + Nota
+                      </Button>
+                      <Button type="button" variant="outline" size="sm" onClick={() => handlePrint('attachment')} className="justify-start">
+                        <ImageIcon className="w-4 h-4 mr-2" /> Lampiran Nota
+                      </Button>
+                    </div>
+                  </CollapsibleContent>
+                </Collapsible>
               </CardContent>
             </Card>
           </div>
