@@ -1,10 +1,21 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import AppLayout from '@/components/AppLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { cn } from '@/lib/utils';
+import { CalendarIcon } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import {
@@ -21,7 +32,7 @@ import {
   TrendingDown,
   ShoppingCart,
   Users,
-  Calendar,
+  Calendar as CalendarLucide,
   Check,
   X,
   Clock,
@@ -87,11 +98,83 @@ interface Outlet {
 
 const ALL = '__all__';
 
+type PeriodPreset = 'today' | '7d' | '30d' | 'this_month' | 'this_year' | 'all' | 'custom';
+
+const PERIOD_LABELS: Record<PeriodPreset, string> = {
+  today: 'Hari Ini',
+  '7d': '7 Hari Terakhir',
+  '30d': '30 Hari Terakhir',
+  this_month: 'Bulan Ini',
+  this_year: 'Tahun Ini',
+  all: 'Semua Waktu',
+  custom: 'Rentang Kustom',
+};
+
+const startOfDay = (d: Date) => {
+  const x = new Date(d);
+  x.setHours(0, 0, 0, 0);
+  return x;
+};
+const endOfDay = (d: Date) => {
+  const x = new Date(d);
+  x.setHours(23, 59, 59, 999);
+  return x;
+};
+const toDateStr = (d: Date) => {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+};
+
+const computeRange = (
+  preset: PeriodPreset,
+  customFrom?: Date,
+  customTo?: Date,
+): { from: Date | null; to: Date | null } => {
+  const now = new Date();
+  switch (preset) {
+    case 'today':
+      return { from: startOfDay(now), to: endOfDay(now) };
+    case '7d': {
+      const f = startOfDay(now);
+      f.setDate(f.getDate() - 6);
+      return { from: f, to: endOfDay(now) };
+    }
+    case '30d': {
+      const f = startOfDay(now);
+      f.setDate(f.getDate() - 29);
+      return { from: f, to: endOfDay(now) };
+    }
+    case 'this_month':
+      return {
+        from: startOfDay(new Date(now.getFullYear(), now.getMonth(), 1)),
+        to: endOfDay(now),
+      };
+    case 'this_year':
+      return {
+        from: startOfDay(new Date(now.getFullYear(), 0, 1)),
+        to: endOfDay(now),
+      };
+    case 'custom':
+      return {
+        from: customFrom ? startOfDay(customFrom) : null,
+        to: customTo ? endOfDay(customTo) : null,
+      };
+    case 'all':
+    default:
+      return { from: null, to: null };
+  }
+};
+
 export default function DashboardPage() {
   const { toast } = useToast();
   const { role } = useAuth();
   const [outlets, setOutlets] = useState<Outlet[]>([]);
   const [selectedOutlet, setSelectedOutlet] = useState<string>(ALL);
+  const [period, setPeriod] = useState<PeriodPreset>('30d');
+  const [customFrom, setCustomFrom] = useState<Date | undefined>(undefined);
+  const [customTo, setCustomTo] = useState<Date | undefined>(undefined);
 
   const [financials, setFinancials] = useState<FinancialSummary[]>([]);
   const [leaveRequests, setLeaveRequests] = useState<LeaveReq[]>([]);
@@ -100,6 +183,11 @@ export default function DashboardPage() {
   const [staff, setStaff] = useState<StaffOverview[]>([]);
   const [attendanceLogs, setAttendanceLogs] = useState<AttendanceLogRow[]>([]);
   const [totals, setTotals] = useState({ totalIncome: 0, totalExpenses: 0 });
+
+  const range = useMemo(
+    () => computeRange(period, customFrom, customTo),
+    [period, customFrom, customTo],
+  );
 
   // Load outlets once
   useEffect(() => {
@@ -115,7 +203,7 @@ export default function DashboardPage() {
   useEffect(() => {
     fetchAll();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedOutlet]);
+  }, [selectedOutlet, period, customFrom, customTo]);
 
   const applyOutletFilter = <T extends { outlet_id?: string | null }>(q: any) => {
     if (selectedOutlet !== ALL) {
@@ -130,8 +218,10 @@ export default function DashboardPage() {
       .from('financial_reports')
       .select('id, report_date, daily_offline_income, online_delivery_sales, outlet_id')
       .order('report_date', { ascending: true })
-      .limit(60);
+      .limit(366);
     if (selectedOutlet !== ALL) reportsQuery = reportsQuery.eq('outlet_id', selectedOutlet);
+    if (range.from) reportsQuery = reportsQuery.gte('report_date', toDateStr(range.from));
+    if (range.to) reportsQuery = reportsQuery.lte('report_date', toDateStr(range.to));
     const { data: reports } = await reportsQuery;
 
     if (reports) {
@@ -240,8 +330,10 @@ export default function DashboardPage() {
       .from('attendance_logs')
       .select('id, user_id, log_type, created_at, out_of_radius, outlet_id')
       .order('created_at', { ascending: false })
-      .limit(20);
+      .limit(50);
     if (selectedOutlet !== ALL) logsQuery = logsQuery.eq('outlet_id', selectedOutlet);
+    if (range.from) logsQuery = logsQuery.gte('created_at', range.from.toISOString());
+    if (range.to) logsQuery = logsQuery.lte('created_at', range.to.toISOString());
     const { data: logs } = await logsQuery;
     if (logs) {
       setAttendanceLogs(
@@ -302,7 +394,86 @@ export default function DashboardPage() {
               Ringkasan operasional Dua Legenda Grup — {outletName}
             </p>
           </div>
+
+          {/* Period selector */}
+          <div className="flex flex-wrap items-center gap-2">
+            <Select value={period} onValueChange={(v) => setPeriod(v as PeriodPreset)}>
+              <SelectTrigger className="w-[180px]">
+                <CalendarLucide className="w-4 h-4 mr-2 opacity-70" />
+                <SelectValue placeholder="Pilih periode" />
+              </SelectTrigger>
+              <SelectContent>
+                {(Object.keys(PERIOD_LABELS) as PeriodPreset[]).map((k) => (
+                  <SelectItem key={k} value={k}>
+                    {PERIOD_LABELS[k]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            {period === 'custom' && (
+              <div className="flex items-center gap-2">
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        'w-[150px] justify-start text-left font-normal',
+                        !customFrom && 'text-muted-foreground',
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {customFrom ? format(customFrom, 'dd MMM yyyy') : 'Dari'}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={customFrom}
+                      onSelect={setCustomFrom}
+                      initialFocus
+                      className={cn('p-3 pointer-events-auto')}
+                    />
+                  </PopoverContent>
+                </Popover>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        'w-[150px] justify-start text-left font-normal',
+                        !customTo && 'text-muted-foreground',
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {customTo ? format(customTo, 'dd MMM yyyy') : 'Sampai'}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={customTo}
+                      onSelect={setCustomTo}
+                      initialFocus
+                      className={cn('p-3 pointer-events-auto')}
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+            )}
+          </div>
         </div>
+
+        {/* Period summary line */}
+        <p className="text-xs text-muted-foreground -mt-2">
+          Periode: <span className="font-medium text-foreground">{PERIOD_LABELS[period]}</span>
+          {range.from && range.to && (
+            <>
+              {' '}
+              ({format(range.from, 'dd MMM yyyy')} — {format(range.to, 'dd MMM yyyy')})
+            </>
+          )}
+        </p>
 
         {/* Outlet Tabs */}
         {outlets.length > 0 && (
@@ -375,7 +546,7 @@ export default function DashboardPage() {
                   </p>
                 </div>
                 <div className="p-2 rounded-full bg-secondary/10">
-                  <Calendar className="w-5 h-5 text-secondary" />
+                  <CalendarLucide className="w-5 h-5 text-secondary" />
                 </div>
               </div>
             </CardContent>
@@ -425,7 +596,7 @@ export default function DashboardPage() {
           <Card className="glass-card">
             <CardHeader>
               <CardTitle className="text-lg flex items-center gap-2">
-                <Calendar className="w-5 h-5" />
+                <CalendarLucide className="w-5 h-5" />
                 Pengajuan Cuti Pending
                 {leaveRequests.length > 0 && (
                   <Badge variant="secondary" className="ml-auto">
