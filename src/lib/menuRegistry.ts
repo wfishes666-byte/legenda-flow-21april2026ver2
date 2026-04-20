@@ -67,7 +67,7 @@ export const MENU_GROUPS: MenuGroupDef[] = [
     label: 'Finance',
     icon: TrendingUp,
     items: [
-      { key: 'finance.daily', to: '/finance/daily-recap', icon: FileText, label: 'Rekapan Laporan Harian', defaultRoles: ['admin', 'management', 'pic'] },
+      { key: 'finance.daily', to: '/finance/daily-recap', icon: FileText, label: 'Laporan Harian Finance', defaultRoles: ['admin', 'management', 'pic'] },
       { key: 'finance.profit_loss', to: '/finance/profit-loss', icon: TrendingUp, label: 'Laporan Laba Rugi', defaultRoles: ['admin', 'management', 'pic'] },
       { key: 'finance.invoice', to: '/finance/invoice', icon: FileText, label: 'Invoice', defaultRoles: ['admin', 'management', 'pic'] },
     ],
@@ -84,7 +84,7 @@ export const MENU_GROUPS: MenuGroupDef[] = [
   },
   {
     key: 'daily_report',
-    label: 'Laporan Harian',
+    label: 'Laporan Harian Outlet',
     icon: Send,
     items: [
       { key: 'daily_report.input', to: '/daily-report', icon: Send, label: 'Input Laporan Closing', defaultRoles: ['admin', 'management', 'pic', 'crew', 'stockman', 'staff'] },
