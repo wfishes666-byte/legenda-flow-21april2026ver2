@@ -441,7 +441,7 @@ export default function OutletReportRecap({ mode }: Props) {
                           const omzet = r.dine_in_omzet || r.daily_offline_income || 0;
                           const expense = expensesByReport.get(r.id) || 0;
                           const cashIn = (r.ending_physical_cash || 0) + (r.ending_qris_cash || 0);
-                          const selisih = (omzet + online) - expense - cashIn;
+                          const selisih = cashIn - ((omzet + online) - expense);
                           return (
                             <tr key={r.id} className="border-b border-border/50 hover:bg-muted/20">
                               <td className="p-3 font-medium">{r.report_date}</td>
