@@ -218,8 +218,10 @@ export default function DashboardPage() {
       .from('financial_reports')
       .select('id, report_date, daily_offline_income, online_delivery_sales, outlet_id')
       .order('report_date', { ascending: true })
-      .limit(60);
+      .limit(366);
     if (selectedOutlet !== ALL) reportsQuery = reportsQuery.eq('outlet_id', selectedOutlet);
+    if (range.from) reportsQuery = reportsQuery.gte('report_date', toDateStr(range.from));
+    if (range.to) reportsQuery = reportsQuery.lte('report_date', toDateStr(range.to));
     const { data: reports } = await reportsQuery;
 
     if (reports) {
@@ -328,8 +330,10 @@ export default function DashboardPage() {
       .from('attendance_logs')
       .select('id, user_id, log_type, created_at, out_of_radius, outlet_id')
       .order('created_at', { ascending: false })
-      .limit(20);
+      .limit(50);
     if (selectedOutlet !== ALL) logsQuery = logsQuery.eq('outlet_id', selectedOutlet);
+    if (range.from) logsQuery = logsQuery.gte('created_at', range.from.toISOString());
+    if (range.to) logsQuery = logsQuery.lte('created_at', range.to.toISOString());
     const { data: logs } = await logsQuery;
     if (logs) {
       setAttendanceLogs(
