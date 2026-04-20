@@ -8,7 +8,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Badge } from '@/components/ui/badge';
-import { Calendar as CalendarIcon, ChevronDown, FileText, TrendingUp, Store } from 'lucide-react';
+import { Calendar as CalendarIcon, ChevronDown, Store } from 'lucide-react';
 import { format, startOfDay, endOfDay, subDays, startOfMonth, startOfYear } from 'date-fns';
 import { cn } from '@/lib/utils';
 
@@ -58,7 +58,9 @@ export default function OutletReportRecap({ mode }: Props) {
   const [period, setPeriod] = useState<PeriodPreset>('30d');
   const [customFrom, setCustomFrom] = useState<Date | undefined>();
   const [customTo, setCustomTo] = useState<Date | undefined>();
+  const [outletFilter, setOutletFilter] = useState<string>('all');
   const [reports, setReports] = useState<OutletReport[]>([]);
+  const [expensesByReport, setExpensesByReport] = useState<Map<string, number>>(new Map());
   const [loading, setLoading] = useState(false);
 
   const range = useMemo(() => computeRange(period, { from: customFrom, to: customTo }), [period, customFrom, customTo]);
@@ -70,7 +72,24 @@ export default function OutletReportRecap({ mode }: Props) {
       if (range.from) q = q.gte('report_date', toDateStr(range.from)!);
       if (range.to) q = q.lte('report_date', toDateStr(range.to)!);
       const { data } = await q;
-      if (data) setReports(data as OutletReport[]);
+      const rows = (data || []) as OutletReport[];
+      setReports(rows);
+
+      // Fetch expenses for these reports
+      const ids = rows.map(r => r.id);
+      if (ids.length > 0) {
+        const { data: exp } = await supabase
+          .from('expense_items')
+          .select('report_id, amount')
+          .in('report_id', ids);
+        const map = new Map<string, number>();
+        (exp || []).forEach((e: any) => {
+          map.set(e.report_id, (map.get(e.report_id) || 0) + Number(e.amount || 0));
+        });
+        setExpensesByReport(map);
+      } else {
+        setExpensesByReport(new Map());
+      }
       setLoading(false);
     };
     fetchData();
@@ -78,10 +97,17 @@ export default function OutletReportRecap({ mode }: Props) {
 
   const outletMap = useMemo(() => new Map(outlets.map(o => [o.id, o.name])), [outlets]);
 
+  // Apply outlet filter
+  const filteredReports = useMemo(() => {
+    if (outletFilter === 'all') return reports;
+    if (outletFilter === 'unassigned') return reports.filter(r => !r.outlet_id);
+    return reports.filter(r => r.outlet_id === outletFilter);
+  }, [reports, outletFilter]);
+
   // Group by outlet
   const grouped = useMemo(() => {
     const map = new Map<string, OutletReport[]>();
-    for (const r of reports) {
+    for (const r of filteredReports) {
       const key = r.outlet_id || 'unassigned';
       if (!map.has(key)) map.set(key, []);
       map.get(key)!.push(r);
@@ -91,7 +117,7 @@ export default function OutletReportRecap({ mode }: Props) {
       outletName: outletMap.get(outletId) || 'Tanpa Cabang',
       rows,
     })).sort((a, b) => a.outletName.localeCompare(b.outletName));
-  }, [reports, outletMap]);
+  }, [filteredReports, outletMap]);
 
   const periodLabel = (() => {
     if (period === 'all') return 'Semua waktu';
@@ -103,7 +129,7 @@ export default function OutletReportRecap({ mode }: Props) {
 
   return (
     <div className="space-y-4">
-      {/* Filter periode */}
+      {/* Filter periode + outlet */}
       <Card className="glass-card">
         <CardContent className="p-4 flex flex-wrap items-center gap-3">
           <CalendarIcon className="w-4 h-4 text-muted-foreground" />
@@ -150,6 +176,21 @@ export default function OutletReportRecap({ mode }: Props) {
             </>
           )}
 
+          <Store className="w-4 h-4 text-muted-foreground ml-2" />
+          <span className="text-sm font-medium">Outlet:</span>
+          <Select value={outletFilter} onValueChange={setOutletFilter}>
+            <SelectTrigger className="w-[200px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Semua Outlet</SelectItem>
+              {outlets.map(o => (
+                <SelectItem key={o.id} value={o.id}>{o.name}</SelectItem>
+              ))}
+              <SelectItem value="unassigned">Tanpa Cabang</SelectItem>
+            </SelectContent>
+          </Select>
+
           <Badge variant="secondary" className="ml-auto">{periodLabel}</Badge>
         </CardContent>
       </Card>
@@ -167,6 +208,8 @@ export default function OutletReportRecap({ mode }: Props) {
         const totalOnline = g.rows.reduce((s, r) =>
           s + (r.online_delivery_sales || ((r.shopeefood_sales || 0) + (r.gofood_sales || 0) + (r.grabfood_sales || 0))), 0);
         const totalCash = g.rows.reduce((s, r) => s + (r.ending_physical_cash || 0) + (r.ending_qris_cash || 0), 0);
+        const totalExpense = g.rows.reduce((s, r) => s + (expensesByReport.get(r.id) || 0), 0);
+        const avgExpense = g.rows.length ? totalExpense / g.rows.length : 0;
 
         if (mode === 'stats') {
           return (
@@ -179,9 +222,9 @@ export default function OutletReportRecap({ mode }: Props) {
                 </div>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                   <Stat label="Total Omzet Dine-in" value={formatRp(totalOmzet)} />
-                  <Stat label="Total Online" value={formatRp(totalOnline)} />
+                  <Stat label="Total Pengeluaran" value={formatRp(totalExpense)} />
                   <Stat label="Total Kas Diterima" value={formatRp(totalCash)} />
-                  <Stat label="Rata-rata/Laporan" value={formatRp(g.rows.length ? (totalOmzet + totalOnline) / g.rows.length : 0)} />
+                  <Stat label="Rata-rata Pengeluaran" value={formatRp(avgExpense)} />
                 </div>
               </CardContent>
             </Card>
@@ -213,20 +256,31 @@ export default function OutletReportRecap({ mode }: Props) {
                           <th className="p-3 text-right">Online</th>
                           <th className="p-3 text-right">Kas Fisik</th>
                           <th className="p-3 text-right">QRIS</th>
+                          <th className="p-3 text-right">Pengeluaran</th>
+                          <th className="p-3 text-right">Selisih</th>
                         </tr>
                       </thead>
                       <tbody>
                         {g.rows.map((r) => {
                           const online = r.online_delivery_sales || ((r.shopeefood_sales || 0) + (r.gofood_sales || 0) + (r.grabfood_sales || 0));
+                          const omzet = r.dine_in_omzet || r.daily_offline_income || 0;
+                          const expense = expensesByReport.get(r.id) || 0;
+                          const cashIn = (r.ending_physical_cash || 0) + (r.ending_qris_cash || 0);
+                          // Selisih = (omzet + online) - pengeluaran - kas masuk
+                          const selisih = (omzet + online) - expense - cashIn;
                           return (
                             <tr key={r.id} className="border-b border-border/50 hover:bg-muted/20">
                               <td className="p-3 font-medium">{r.report_date}</td>
                               <td className="p-3 text-muted-foreground">{r.shift || '-'}</td>
                               <td className="p-3">{r.reporter_name || '-'}</td>
-                              <td className="p-3 text-right">{formatRp(r.dine_in_omzet || r.daily_offline_income || 0)}</td>
+                              <td className="p-3 text-right">{formatRp(omzet)}</td>
                               <td className="p-3 text-right">{formatRp(online)}</td>
                               <td className="p-3 text-right">{formatRp(r.ending_physical_cash || 0)}</td>
                               <td className="p-3 text-right">{formatRp(r.ending_qris_cash || 0)}</td>
+                              <td className="p-3 text-right text-destructive">{formatRp(expense)}</td>
+                              <td className={cn('p-3 text-right font-medium', selisih < 0 ? 'text-destructive' : selisih > 0 ? 'text-primary' : '')}>
+                                {formatRp(selisih)}
+                              </td>
                             </tr>
                           );
                         })}
