@@ -8,9 +8,10 @@ import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Badge } from '@/components/ui/badge';
-import { Calendar as CalendarIcon, ChevronDown, Store } from 'lucide-react';
-import { format, startOfDay, endOfDay, subDays, startOfMonth, startOfYear } from 'date-fns';
+import { Calendar as CalendarIcon, ChevronDown, Store, TrendingUp } from 'lucide-react';
+import { format, startOfDay, endOfDay, subDays, startOfMonth, startOfYear, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
 
 type PeriodPreset = 'today' | '7d' | '30d' | 'this_month' | 'this_year' | 'all' | 'custom';
 
