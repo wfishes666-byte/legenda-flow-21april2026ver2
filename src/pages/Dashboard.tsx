@@ -32,7 +32,7 @@ import {
   TrendingDown,
   ShoppingCart,
   Users,
-  Calendar,
+  Calendar as CalendarLucide,
   Check,
   X,
   Clock,
