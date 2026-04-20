@@ -13,7 +13,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
-import { Calendar as CalendarIcon, ChevronDown, Pencil, Store, TrendingUp } from 'lucide-react';
+import { Calendar as CalendarIcon, ChevronDown, Pencil, Plus, Store, Trash2, TrendingUp } from 'lucide-react';
 import { format, startOfDay, endOfDay, subDays, startOfMonth, startOfYear, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
@@ -36,6 +36,15 @@ interface OutletReport {
   grabfood_sales: number | null;
   online_delivery_sales: number | null;
   notes: string | null;
+}
+
+interface ExpenseItem {
+  id: string;
+  description: string;
+  amount: number;
+  category: string | null;
+  qty: number | null;
+  unit_price: number | null;
 }
 
 const formatRp = (v: number) => `Rp ${(v || 0).toLocaleString('id-ID')}`;
@@ -73,6 +82,8 @@ export default function OutletReportRecap({ mode }: Props) {
   const [loading, setLoading] = useState(false);
   const [editing, setEditing] = useState<OutletReport | null>(null);
   const [editForm, setEditForm] = useState<Record<string, number>>({});
+  const [editExpenses, setEditExpenses] = useState<ExpenseItem[]>([]);
+  const [loadingExpenses, setLoadingExpenses] = useState(false);
   const [saving, setSaving] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
 
@@ -88,7 +99,6 @@ export default function OutletReportRecap({ mode }: Props) {
       const rows = (data || []) as OutletReport[];
       setReports(rows);
 
-      // Fetch expenses for these reports
       const ids = rows.map(r => r.id);
       if (ids.length > 0) {
         const { data: exp } = await supabase
@@ -108,7 +118,7 @@ export default function OutletReportRecap({ mode }: Props) {
     fetchData();
   }, [range.from?.getTime(), range.to?.getTime(), refreshKey]);
 
-  const openEdit = (r: OutletReport) => {
+  const openEdit = async (r: OutletReport) => {
     setEditing(r);
     setEditForm({
       starting_cash: r.starting_cash || 0,
@@ -119,6 +129,26 @@ export default function OutletReportRecap({ mode }: Props) {
       ending_physical_cash: r.ending_physical_cash || 0,
       ending_qris_cash: r.ending_qris_cash || 0,
     });
+    setLoadingExpenses(true);
+    const { data } = await supabase
+      .from('expense_items')
+      .select('id, description, amount, category, qty, unit_price')
+      .eq('report_id', r.id)
+      .order('created_at', { ascending: true });
+    setEditExpenses((data || []) as ExpenseItem[]);
+    setLoadingExpenses(false);
+  };
+
+  const updateExpense = (idx: number, field: keyof ExpenseItem, value: string | number) => {
+    setEditExpenses(prev => prev.map((e, i) => i === idx ? { ...e, [field]: value } : e));
+  };
+
+  const addExpense = () => {
+    setEditExpenses(prev => [...prev, { id: `new-${Date.now()}`, description: '', amount: 0, category: null, qty: 1, unit_price: 0 }]);
+  };
+
+  const removeExpense = (idx: number) => {
+    setEditExpenses(prev => prev.filter((_, i) => i !== idx));
   };
 
   const saveEdit = async () => {
@@ -139,26 +169,56 @@ export default function OutletReportRecap({ mode }: Props) {
         ending_qris_cash: editForm.ending_qris_cash,
       })
       .eq('id', editing.id);
-    setSaving(false);
     if (error) {
       toast({ title: 'Gagal menyimpan', description: error.message, variant: 'destructive' });
+      setSaving(false);
       return;
     }
-    toast({ title: 'Tersimpan', description: 'Data laporan diperbarui.' });
+
+    // Save expenses: delete all existing, then re-insert
+    const { error: delErr } = await supabase
+      .from('expense_items')
+      .delete()
+      .eq('report_id', editing.id);
+    if (delErr) {
+      toast({ title: 'Gagal menghapus pengeluaran lama', description: delErr.message, variant: 'destructive' });
+      setSaving(false);
+      return;
+    }
+
+    const validExpenses = editExpenses.filter(e => e.description.trim() && e.amount > 0);
+    if (validExpenses.length > 0) {
+      const { error: insErr } = await supabase
+        .from('expense_items')
+        .insert(validExpenses.map(e => ({
+          report_id: editing.id,
+          description: e.description.trim(),
+          amount: e.amount,
+          category: e.category || 'Lain-lain',
+          qty: e.qty || 1,
+          unit_price: e.unit_price || e.amount,
+        })));
+      if (insErr) {
+        toast({ title: 'Gagal menyimpan pengeluaran', description: insErr.message, variant: 'destructive' });
+        setSaving(false);
+        return;
+      }
+    }
+
+    setSaving(false);
+    toast({ title: 'Tersimpan', description: 'Data laporan dan pengeluaran diperbarui.' });
     setEditing(null);
     setRefreshKey((k) => k + 1);
   };
 
   const outletMap = useMemo(() => new Map(outlets.map(o => [o.id, o.name])), [outlets]);
 
-  // Apply outlet filter
   const filteredReports = useMemo(() => {
     if (outletFilter === 'all') return reports;
     if (outletFilter === 'unassigned') return reports.filter(r => !r.outlet_id);
     return reports.filter(r => r.outlet_id === outletFilter);
   }, [reports, outletFilter]);
 
-  // Group by outlet
   const grouped = useMemo(() => {
     const map = new Map<string, OutletReport[]>();
     for (const r of filteredReports) {
@@ -181,12 +241,13 @@ export default function OutletReportRecap({ mode }: Props) {
     return '-';
   })();
 
+  const totalEditExpense = editExpenses.reduce((s, e) => s + (e.amount || 0), 0);
+
   return (
     <div className="space-y-4">
       {/* Filter periode + outlet */}
       <Card className="glass-card">
         <CardContent className="p-3 sm:p-4 space-y-3">
-          {/* Periode */}
           <div className="flex flex-wrap items-center gap-2 sm:gap-3">
             <div className="flex items-center gap-2 shrink-0">
               <CalendarIcon className="w-4 h-4 text-muted-foreground" />
@@ -235,7 +296,6 @@ export default function OutletReportRecap({ mode }: Props) {
             )}
           </div>
 
-          {/* Outlet + label periode */}
           <div className="flex flex-wrap items-center gap-2 sm:gap-3">
             <div className="flex items-center gap-2 shrink-0">
               <Store className="w-4 h-4 text-muted-foreground" />
@@ -276,7 +336,6 @@ export default function OutletReportRecap({ mode }: Props) {
         const avgExpense = g.rows.length ? totalExpense / g.rows.length : 0;
 
         if (mode === 'stats') {
-          // Build daily trend data: aggregate per date
           const dailyMap = new Map<string, { date: string; omzet: number; pengeluaran: number }>();
           for (const r of g.rows) {
             const omzet = (r.dine_in_omzet || r.daily_offline_income || 0) +
@@ -382,7 +441,6 @@ export default function OutletReportRecap({ mode }: Props) {
                           const omzet = r.dine_in_omzet || r.daily_offline_income || 0;
                           const expense = expensesByReport.get(r.id) || 0;
                           const cashIn = (r.ending_physical_cash || 0) + (r.ending_qris_cash || 0);
-                          // Selisih = (omzet + online) - pengeluaran - kas masuk
                           const selisih = (omzet + online) - expense - cashIn;
                           return (
                             <tr key={r.id} className="border-b border-border/50 hover:bg-muted/20">
@@ -419,35 +477,92 @@ export default function OutletReportRecap({ mode }: Props) {
 
       {/* Admin edit dialog */}
       <Dialog open={!!editing} onOpenChange={(o) => !o && setEditing(null)}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-lg max-h-[90vh] flex flex-col">
           <DialogHeader>
             <DialogTitle>Edit Angka Laporan</DialogTitle>
             <DialogDescription>
               {editing && `${editing.report_date} • ${outletMap.get(editing.outlet_id || '') || 'Tanpa Cabang'}`}
             </DialogDescription>
           </DialogHeader>
-          <div className="grid grid-cols-2 gap-3 max-h-[60vh] overflow-y-auto pr-1">
-            {[
-              { key: 'starting_cash', label: 'Kas Awal' },
-              { key: 'dine_in_omzet', label: 'Omzet Dine-in' },
-              { key: 'shopeefood_sales', label: 'ShopeeFood' },
-              { key: 'gofood_sales', label: 'GoFood' },
-              { key: 'grabfood_sales', label: 'GrabFood' },
-              { key: 'ending_physical_cash', label: 'Kas Fisik Akhir' },
-              { key: 'ending_qris_cash', label: 'QRIS Akhir' },
-            ].map((f) => (
-              <div key={f.key} className="space-y-1">
-                <Label className="text-xs">{f.label}</Label>
-                <Input
-                  type="number"
-                  inputMode="numeric"
-                  value={editForm[f.key] ?? 0}
-                  onChange={(e) => setEditForm((s) => ({ ...s, [f.key]: Number(e.target.value) || 0 }))}
-                />
+          <div className="flex-1 overflow-y-auto space-y-4 pr-1">
+            {/* Angka laporan */}
+            <div className="grid grid-cols-2 gap-3">
+              {[
+                { key: 'starting_cash', label: 'Kas Awal' },
+                { key: 'dine_in_omzet', label: 'Omzet Dine-in' },
+                { key: 'shopeefood_sales', label: 'ShopeeFood' },
+                { key: 'gofood_sales', label: 'GoFood' },
+                { key: 'grabfood_sales', label: 'GrabFood' },
+                { key: 'ending_physical_cash', label: 'Kas Fisik Akhir' },
+                { key: 'ending_qris_cash', label: 'QRIS Akhir' },
+              ].map((f) => (
+                <div key={f.key} className="space-y-1">
+                  <Label className="text-xs">{f.label}</Label>
+                  <Input
+                    type="number"
+                    inputMode="numeric"
+                    value={editForm[f.key] ?? 0}
+                    onChange={(e) => setEditForm((s) => ({ ...s, [f.key]: Number(e.target.value) || 0 }))}
+                  />
+                </div>
+              ))}
+            </div>
+
+            {/* Pengeluaran */}
+            <div className="border-t pt-3">
+              <div className="flex items-center justify-between mb-2">
+                <Label className="text-sm font-semibold">Pengeluaran</Label>
+                <span className="text-xs text-muted-foreground font-medium">Total: {formatRp(totalEditExpense)}</span>
               </div>
-            ))}
+              {loadingExpenses ? (
+                <div className="text-center text-sm text-muted-foreground py-3">Memuat pengeluaran...</div>
+              ) : (
+                <div className="space-y-2">
+                  {editExpenses.map((exp, idx) => (
+                    <div key={exp.id} className="flex items-start gap-2 p-2 rounded-md bg-muted/30 border">
+                      <div className="flex-1 space-y-1.5">
+                        <Input
+                          placeholder="Deskripsi"
+                          value={exp.description}
+                          onChange={(e) => updateExpense(idx, 'description', e.target.value)}
+                          className="h-8 text-sm"
+                        />
+                        <div className="flex gap-2">
+                          <div className="flex-1">
+                            <Input
+                              type="number"
+                              inputMode="numeric"
+                              placeholder="Jumlah (Rp)"
+                              value={exp.amount || ''}
+                              onChange={(e) => updateExpense(idx, 'amount', Number(e.target.value) || 0)}
+                              className="h-8 text-sm"
+                            />
+                          </div>
+                          <div className="w-20">
+                            <Input
+                              type="number"
+                              inputMode="numeric"
+                              placeholder="Qty"
+                              value={exp.qty || ''}
+                              onChange={(e) => updateExpense(idx, 'qty', Number(e.target.value) || 1)}
+                              className="h-8 text-sm"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                      <Button size="icon" variant="ghost" className="h-8 w-8 shrink-0 text-destructive hover:text-destructive" onClick={() => removeExpense(idx)}>
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </Button>
+                    </div>
+                  ))}
+                  <Button variant="outline" size="sm" className="w-full" onClick={addExpense}>
+                    <Plus className="w-3.5 h-3.5 mr-1.5" /> Tambah Pengeluaran
+                  </Button>
+                </div>
+              )}
+            </div>
           </div>
-          <DialogFooter>
+          <DialogFooter className="pt-3 border-t">
             <Button variant="outline" onClick={() => setEditing(null)} disabled={saving}>Batal</Button>
             <Button onClick={saveEdit} disabled={saving}>{saving ? 'Menyimpan...' : 'Simpan'}</Button>
           </DialogFooter>
