@@ -192,12 +192,12 @@ export default function OutletReportRecap({ mode }: Props) {
         return (
           <Collapsible key={g.outletId} defaultOpen>
             <Card className="glass-card">
-              <CollapsibleTrigger className="w-full">
-                <div className="p-4 flex items-center gap-3 hover:bg-muted/30 transition">
+              <CollapsibleTrigger asChild>
+                <div className="p-4 flex items-center gap-3 hover:bg-muted/30 transition cursor-pointer select-none" role="button" tabIndex={0}>
                   <Store className="w-4 h-4 text-primary" />
                   <h3 className="font-bold flex-1 text-left">{g.outletName}</h3>
                   <Badge variant="outline">{g.rows.length} laporan</Badge>
-                  <ChevronDown className="w-4 h-4 transition-transform [[data-state=open]>&]:rotate-180" />
+                  <ChevronDown className="w-4 h-4 transition-transform" />
                 </div>
               </CollapsibleTrigger>
               <CollapsibleContent>
