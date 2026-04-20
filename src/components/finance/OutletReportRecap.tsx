@@ -213,6 +213,21 @@ export default function OutletReportRecap({ mode }: Props) {
         const avgExpense = g.rows.length ? totalExpense / g.rows.length : 0;
 
         if (mode === 'stats') {
+          // Build daily trend data: aggregate per date
+          const dailyMap = new Map<string, { date: string; omzet: number; pengeluaran: number }>();
+          for (const r of g.rows) {
+            const omzet = (r.dine_in_omzet || r.daily_offline_income || 0) +
+              (r.online_delivery_sales || ((r.shopeefood_sales || 0) + (r.gofood_sales || 0) + (r.grabfood_sales || 0)));
+            const exp = expensesByReport.get(r.id) || 0;
+            const cur = dailyMap.get(r.report_date) || { date: r.report_date, omzet: 0, pengeluaran: 0 };
+            cur.omzet += omzet;
+            cur.pengeluaran += exp;
+            dailyMap.set(r.report_date, cur);
+          }
+          const trendData = Array.from(dailyMap.values())
+            .sort((a, b) => a.date.localeCompare(b.date))
+            .map(d => ({ ...d, label: format(parseISO(d.date), 'dd MMM') }));
+
           return (
             <Card key={g.outletId} className="glass-card">
               <CardContent className="p-5">
@@ -221,11 +236,47 @@ export default function OutletReportRecap({ mode }: Props) {
                   <h3 className="font-bold text-lg">{g.outletName}</h3>
                   <Badge variant="outline" className="ml-auto">{g.rows.length} laporan</Badge>
                 </div>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
                   <Stat label="Total Omzet Dine-in" value={formatRp(totalOmzet)} />
                   <Stat label="Total Pengeluaran" value={formatRp(totalExpense)} />
                   <Stat label="Total Kas Diterima" value={formatRp(totalCash)} />
                   <Stat label="Rata-rata Pengeluaran" value={formatRp(avgExpense)} />
+                </div>
+
+                <div className="border-t pt-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <TrendingUp className="w-4 h-4 text-primary" />
+                    <h4 className="font-semibold text-sm">Tren Harian: Omzet vs Pengeluaran</h4>
+                  </div>
+                  {trendData.length === 0 ? (
+                    <div className="text-center text-sm text-muted-foreground py-8">Tidak ada data tren.</div>
+                  ) : (
+                    <div className="h-[280px] w-full">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <LineChart data={trendData} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.4} />
+                          <XAxis dataKey="label" stroke="hsl(var(--muted-foreground))" fontSize={11} />
+                          <YAxis
+                            stroke="hsl(var(--muted-foreground))"
+                            fontSize={11}
+                            tickFormatter={(v) => v >= 1_000_000 ? `${(v / 1_000_000).toFixed(1)}jt` : v >= 1000 ? `${(v / 1000).toFixed(0)}rb` : `${v}`}
+                          />
+                          <Tooltip
+                            contentStyle={{
+                              background: 'hsl(var(--background))',
+                              border: '1px solid hsl(var(--border))',
+                              borderRadius: 8,
+                              fontSize: 12,
+                            }}
+                            formatter={(v: number) => formatRp(v)}
+                          />
+                          <Legend wrapperStyle={{ fontSize: 12 }} />
+                          <Line type="monotone" dataKey="omzet" name="Omzet (Dine-in + Online)" stroke="hsl(var(--primary))" strokeWidth={2} dot={{ r: 3 }} activeDot={{ r: 5 }} />
+                          <Line type="monotone" dataKey="pengeluaran" name="Pengeluaran" stroke="hsl(var(--destructive))" strokeWidth={2} dot={{ r: 3 }} activeDot={{ r: 5 }} />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
