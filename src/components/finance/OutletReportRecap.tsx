@@ -132,67 +132,77 @@ export default function OutletReportRecap({ mode }: Props) {
     <div className="space-y-4">
       {/* Filter periode + outlet */}
       <Card className="glass-card">
-        <CardContent className="p-4 flex flex-wrap items-center gap-3">
-          <CalendarIcon className="w-4 h-4 text-muted-foreground" />
-          <span className="text-sm font-medium">Periode:</span>
-          <Select value={period} onValueChange={(v) => setPeriod(v as PeriodPreset)}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="today">Hari Ini</SelectItem>
-              <SelectItem value="7d">7 Hari Terakhir</SelectItem>
-              <SelectItem value="30d">30 Hari Terakhir</SelectItem>
-              <SelectItem value="this_month">Bulan Ini</SelectItem>
-              <SelectItem value="this_year">Tahun Ini</SelectItem>
-              <SelectItem value="all">Semua Waktu</SelectItem>
-              <SelectItem value="custom">Kustom</SelectItem>
-            </SelectContent>
-          </Select>
+        <CardContent className="p-3 sm:p-4 space-y-3">
+          {/* Periode */}
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+            <div className="flex items-center gap-2 shrink-0">
+              <CalendarIcon className="w-4 h-4 text-muted-foreground" />
+              <span className="text-sm font-medium">Periode:</span>
+            </div>
+            <Select value={period} onValueChange={(v) => setPeriod(v as PeriodPreset)}>
+              <SelectTrigger className="w-full sm:w-[180px] flex-1 sm:flex-none min-w-[140px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="today">Hari Ini</SelectItem>
+                <SelectItem value="7d">7 Hari Terakhir</SelectItem>
+                <SelectItem value="30d">30 Hari Terakhir</SelectItem>
+                <SelectItem value="this_month">Bulan Ini</SelectItem>
+                <SelectItem value="this_year">Tahun Ini</SelectItem>
+                <SelectItem value="all">Semua Waktu</SelectItem>
+                <SelectItem value="custom">Kustom</SelectItem>
+              </SelectContent>
+            </Select>
 
-          {period === 'custom' && (
-            <>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" size="sm" className={cn('w-[150px] justify-start', !customFrom && 'text-muted-foreground')}>
-                    <CalendarIcon className="w-3.5 h-3.5 mr-2" />
-                    {customFrom ? format(customFrom, 'dd MMM yyyy') : 'Dari'}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar mode="single" selected={customFrom} onSelect={setCustomFrom} initialFocus className="p-3 pointer-events-auto" />
-                </PopoverContent>
-              </Popover>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" size="sm" className={cn('w-[150px] justify-start', !customTo && 'text-muted-foreground')}>
-                    <CalendarIcon className="w-3.5 h-3.5 mr-2" />
-                    {customTo ? format(customTo, 'dd MMM yyyy') : 'Sampai'}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar mode="single" selected={customTo} onSelect={setCustomTo} initialFocus className="p-3 pointer-events-auto" />
-                </PopoverContent>
-              </Popover>
-            </>
-          )}
+            {period === 'custom' && (
+              <div className="flex flex-wrap gap-2 w-full sm:w-auto">
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" size="sm" className={cn('flex-1 sm:flex-none sm:w-[150px] justify-start min-w-[130px]', !customFrom && 'text-muted-foreground')}>
+                      <CalendarIcon className="w-3.5 h-3.5 mr-2 shrink-0" />
+                      <span className="truncate">{customFrom ? format(customFrom, 'dd MMM yyyy') : 'Dari'}</span>
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar mode="single" selected={customFrom} onSelect={setCustomFrom} initialFocus className="p-3 pointer-events-auto" />
+                  </PopoverContent>
+                </Popover>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" size="sm" className={cn('flex-1 sm:flex-none sm:w-[150px] justify-start min-w-[130px]', !customTo && 'text-muted-foreground')}>
+                      <CalendarIcon className="w-3.5 h-3.5 mr-2 shrink-0" />
+                      <span className="truncate">{customTo ? format(customTo, 'dd MMM yyyy') : 'Sampai'}</span>
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar mode="single" selected={customTo} onSelect={setCustomTo} initialFocus className="p-3 pointer-events-auto" />
+                  </PopoverContent>
+                </Popover>
+              </div>
+            )}
+          </div>
 
-          <Store className="w-4 h-4 text-muted-foreground ml-2" />
-          <span className="text-sm font-medium">Outlet:</span>
-          <Select value={outletFilter} onValueChange={setOutletFilter}>
-            <SelectTrigger className="w-[200px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Semua Outlet</SelectItem>
-              {outlets.map(o => (
-                <SelectItem key={o.id} value={o.id}>{o.name}</SelectItem>
-              ))}
-              <SelectItem value="unassigned">Tanpa Cabang</SelectItem>
-            </SelectContent>
-          </Select>
+          {/* Outlet + label periode */}
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+            <div className="flex items-center gap-2 shrink-0">
+              <Store className="w-4 h-4 text-muted-foreground" />
+              <span className="text-sm font-medium">Outlet:</span>
+            </div>
+            <Select value={outletFilter} onValueChange={setOutletFilter}>
+              <SelectTrigger className="w-full sm:w-[200px] flex-1 sm:flex-none min-w-[160px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Semua Outlet</SelectItem>
+                {outlets.map(o => (
+                  <SelectItem key={o.id} value={o.id}>{o.name}</SelectItem>
+                ))}
+                <SelectItem value="unassigned">Tanpa Cabang</SelectItem>
+              </SelectContent>
+            </Select>
 
-          <Badge variant="secondary" className="ml-auto">{periodLabel}</Badge>
+            <Badge variant="secondary" className="sm:ml-auto text-xs whitespace-normal text-center">{periodLabel}</Badge>
+          </div>
         </CardContent>
       </Card>
 
