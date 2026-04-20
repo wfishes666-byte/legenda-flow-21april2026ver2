@@ -386,7 +386,7 @@ export default function DashboardPage() {
                   </p>
                 </div>
                 <div className="p-2 rounded-full bg-secondary/10">
-                  <Calendar className="w-5 h-5 text-secondary" />
+                  <CalendarLucide className="w-5 h-5 text-secondary" />
                 </div>
               </div>
             </CardContent>
@@ -436,7 +436,7 @@ export default function DashboardPage() {
           <Card className="glass-card">
             <CardHeader>
               <CardTitle className="text-lg flex items-center gap-2">
-                <Calendar className="w-5 h-5" />
+                <CalendarLucide className="w-5 h-5" />
                 Pengajuan Cuti Pending
                 {leaveRequests.length > 0 && (
                   <Badge variant="secondary" className="ml-auto">
