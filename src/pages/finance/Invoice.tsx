@@ -367,79 +367,209 @@ export default function InvoicePage() {
           </TabsContent>
 
           {/* ============ REKAP ============ */}
-          <TabsContent value="rekap" className="space-y-4">
-            <Card className="glass-card">
-              <CardContent className="pt-6 flex flex-wrap gap-3 items-end">
-                <div>
-                  <Label>Bulan</Label>
-                  <Input type="month" value={filterMonth} onChange={(e) => setFilterMonth(e.target.value)} className="w-40" />
-                </div>
-                <div>
-                  <Label>Outlet</Label>
-                  <Select value={filterOutlet} onValueChange={setFilterOutlet}>
-                    <SelectTrigger className="w-48"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Semua Outlet</SelectItem>
-                      {outlets.map((o) => <SelectItem key={o.id} value={o.id}>{o.name}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="ml-auto">
-                  <ExportButtons
-                    filename={`rekap-invoice-${filterMonth}`}
-                    title={`Rekap Invoice - ${filterMonth}`}
-                    subtitle={filterOutlet === 'all' ? 'Semua Outlet' : outlets.find(o => o.id === filterOutlet)?.name}
-                    orientation="landscape"
-                    columns={[
-                      { header: 'Tanggal', accessor: (r: any) => format(new Date(r.invoice_date), 'dd/MM/yyyy') },
-                      { header: 'Outlet', accessor: 'outlet_name' as any },
-                      { header: 'Item', accessor: (r: any) => (r.items || []).map((i: any) => `${i.qty}x ${i.item_name}`).join('; ') },
-                      { header: 'Total', accessor: (r: any) => formatRpExport(r.total) },
-                    ]}
-                    rows={invoices}
-                  />
-                </div>
-              </CardContent>
-            </Card>
+          <TabsContent value="rekap" className="space-y-3">
+            {/* Search + Outlet chips */}
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="relative flex-1 min-w-[220px] max-w-xs">
+                <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Cari nomor / outlet..."
+                  className="h-9 pl-8 text-sm"
+                />
+              </div>
+              <Button
+                size="sm"
+                variant={filterOutlet === 'all' ? 'default' : 'outline'}
+                onClick={() => setFilterOutlet('all')}
+                className="h-9 text-xs"
+              >
+                Semua Outlet
+              </Button>
+              {outlets.map((o) => (
+                <Button
+                  key={o.id}
+                  size="sm"
+                  variant={filterOutlet === o.id ? 'default' : 'outline'}
+                  onClick={() => setFilterOutlet(o.id)}
+                  className="h-9 text-xs"
+                >
+                  {o.name}
+                </Button>
+              ))}
+              <div className="ml-auto">
+                <ExportButtons
+                  filename="rekap-invoice"
+                  title="Rekap Invoice"
+                  subtitle={filterOutlet === 'all' ? 'Semua Outlet' : outlets.find(o => o.id === filterOutlet)?.name}
+                  orientation="landscape"
+                  columns={[
+                    { header: 'Nomor', accessor: (r: any) => r.invoice_number || '-' },
+                    { header: 'Outlet', accessor: 'outlet_name' as any },
+                    { header: 'Kepada', accessor: (r: any) => r.recipient || '—' },
+                    { header: 'Tanggal', accessor: (r: any) => format(new Date(r.invoice_date), 'yyyy-MM-dd') },
+                    { header: 'Total', accessor: (r: any) => formatRpExport(r.total) },
+                    { header: 'Status', accessor: (r: any) => r.status === 'paid' ? 'Terbayar' : 'Belum Dibayar' },
+                  ]}
+                  rows={invoices}
+                />
+              </div>
+            </div>
 
-            {invoices.length === 0 ? (
-              <Card className="glass-card"><CardContent className="py-12 text-center text-sm text-muted-foreground">
-                Belum ada invoice di periode ini.
-              </CardContent></Card>
-            ) : invoices.map((inv) => (
-              <Card key={inv.id} className="glass-card">
-                <CardHeader className="pb-3 flex flex-row items-center justify-between">
-                  <div>
-                    <CardTitle className="text-base">{inv.outlet_name} — {format(new Date(inv.invoice_date), 'dd MMM yyyy')}</CardTitle>
-                    <p className="text-xs text-muted-foreground mt-0.5">{(inv.items || []).length} item · Total {formatRp(Number(inv.total))}</p>
+            {/* Status chips */}
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs font-medium text-muted-foreground">Status:</span>
+              {([
+                { v: 'all', label: 'Semua' },
+                { v: 'unpaid', label: 'Belum Dibayar' },
+                { v: 'paid', label: 'Terbayar' },
+              ] as const).map((s) => (
+                <Button
+                  key={s.v}
+                  size="sm"
+                  variant={filterStatus === s.v ? 'default' : 'outline'}
+                  onClick={() => setFilterStatus(s.v)}
+                  className="h-8 text-xs"
+                >
+                  {s.label}
+                </Button>
+              ))}
+            </div>
+
+            {/* Count + total */}
+            {(() => {
+              const q = searchQuery.trim().toLowerCase();
+              const filtered = invoices.filter((inv) => {
+                if (filterStatus !== 'all' && inv.status !== filterStatus) return false;
+                if (!q) return true;
+                return (
+                  (inv.invoice_number || '').toLowerCase().includes(q) ||
+                  (inv.outlet_name || '').toLowerCase().includes(q) ||
+                  (inv.recipient || '').toLowerCase().includes(q)
+                );
+              });
+              const grand = filtered.reduce((s, r) => s + Number(r.total || 0), 0);
+              return (
+                <>
+                  <div className="text-xs text-muted-foreground">
+                    <span className="font-medium text-foreground">{filtered.length} invoice</span>
+                    <span className="mx-2">·</span>
+                    Total: <span className="font-bold text-foreground">{formatRp(grand)}</span>
                   </div>
-                  <Button variant="ghost" size="icon" onClick={() => deleteInvoice(inv.id)} className="text-destructive">
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
-                </CardHeader>
-                <CardContent>
-                  <Table>
-                    <TableHeader><TableRow>
-                      <TableHead>Item</TableHead><TableHead>Satuan</TableHead>
-                      <TableHead className="text-right">Qty</TableHead>
-                      <TableHead className="text-right">Harga</TableHead>
-                      <TableHead className="text-right">Total</TableHead>
-                    </TableRow></TableHeader>
-                    <TableBody>
-                      {(inv.items || []).map((it, i) => (
-                        <TableRow key={i}>
-                          <TableCell>{it.item_name}</TableCell>
-                          <TableCell>{it.unit}</TableCell>
-                          <TableCell className="text-right">{it.qty}</TableCell>
-                          <TableCell className="text-right">{formatRp(Number(it.unit_price))}</TableCell>
-                          <TableCell className="text-right font-medium">{formatRp(Number(it.total))}</TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </CardContent>
-              </Card>
-            ))}
+
+                  <Card className="glass-card overflow-hidden">
+                    {filtered.length === 0 ? (
+                      <div className="py-12 text-center text-sm text-muted-foreground">
+                        Tidak ada invoice yang cocok.
+                      </div>
+                    ) : (
+                      <div className="overflow-x-auto">
+                        <Table>
+                          <TableHeader>
+                            <TableRow className="bg-muted/40 hover:bg-muted/40">
+                              <TableHead className="text-[11px] font-semibold uppercase tracking-wide w-8"></TableHead>
+                              <TableHead className="text-[11px] font-semibold uppercase tracking-wide">Nomor</TableHead>
+                              <TableHead className="text-[11px] font-semibold uppercase tracking-wide">Outlet</TableHead>
+                              <TableHead className="text-[11px] font-semibold uppercase tracking-wide">Kepada</TableHead>
+                              <TableHead className="text-[11px] font-semibold uppercase tracking-wide">Tanggal</TableHead>
+                              <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-right">Total</TableHead>
+                              <TableHead className="text-[11px] font-semibold uppercase tracking-wide">Status</TableHead>
+                              <TableHead className="text-[11px] font-semibold uppercase tracking-wide w-[170px]"></TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {filtered.map((inv) => {
+                              const isOpen = expandedInv === inv.id;
+                              const isPaid = inv.status === 'paid';
+                              return (
+                                <>
+                                  <TableRow
+                                    key={inv.id}
+                                    className="cursor-pointer"
+                                    onClick={() => setExpandedInv(isOpen ? null : inv.id)}
+                                  >
+                                    <TableCell className="py-2.5">
+                                      {isOpen ? <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" /> : <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />}
+                                    </TableCell>
+                                    <TableCell className="py-2.5 font-semibold text-sm">{inv.invoice_number || '—'}</TableCell>
+                                    <TableCell className="py-2.5 text-sm">{inv.outlet_name}</TableCell>
+                                    <TableCell className="py-2.5 text-sm text-muted-foreground">{inv.recipient || '—'}</TableCell>
+                                    <TableCell className="py-2.5 text-sm">{format(new Date(inv.invoice_date), 'yyyy-MM-dd')}</TableCell>
+                                    <TableCell className="py-2.5 text-sm text-right font-medium">{formatRp(Number(inv.total))}</TableCell>
+                                    <TableCell className="py-2.5">
+                                      {isPaid ? (
+                                        <span className="inline-flex items-center rounded-md bg-green-500/15 text-green-700 dark:text-green-400 px-2 py-0.5 text-[11px] font-medium">
+                                          Terbayar
+                                        </span>
+                                      ) : (
+                                        <span className="inline-flex items-center rounded-md bg-yellow-400/20 text-yellow-700 dark:text-yellow-400 px-2 py-0.5 text-[11px] font-medium">
+                                          Belum
+                                        </span>
+                                      )}
+                                    </TableCell>
+                                    <TableCell className="py-2 text-right" onClick={(e) => e.stopPropagation()}>
+                                      <div className="flex justify-end gap-1.5">
+                                        <Button
+                                          size="sm"
+                                          variant="outline"
+                                          className="h-7 text-[11px] px-2 border-green-600/40 text-green-700 dark:text-green-400 hover:bg-green-500/10"
+                                          onClick={() => togglePaid(inv)}
+                                        >
+                                          {isPaid ? 'Batalkan' : 'Terbayar'}
+                                        </Button>
+                                        <Button
+                                          size="sm"
+                                          variant="outline"
+                                          className="h-7 text-[11px] px-2 border-destructive/40 text-destructive hover:bg-destructive/10"
+                                          onClick={() => deleteInvoice(inv.id)}
+                                        >
+                                          Hapus
+                                        </Button>
+                                      </div>
+                                    </TableCell>
+                                  </TableRow>
+                                  {isOpen && (
+                                    <TableRow key={`${inv.id}-items`} className="bg-muted/20 hover:bg-muted/20">
+                                      <TableCell colSpan={8} className="py-3">
+                                        <div className="overflow-x-auto">
+                                          <Table>
+                                            <TableHeader>
+                                              <TableRow>
+                                                <TableHead className="text-[11px] uppercase">Item</TableHead>
+                                                <TableHead className="text-[11px] uppercase">Satuan</TableHead>
+                                                <TableHead className="text-[11px] uppercase text-right">Qty</TableHead>
+                                                <TableHead className="text-[11px] uppercase text-right">Harga</TableHead>
+                                                <TableHead className="text-[11px] uppercase text-right">Total</TableHead>
+                                              </TableRow>
+                                            </TableHeader>
+                                            <TableBody>
+                                              {(inv.items || []).map((it, i) => (
+                                                <TableRow key={i}>
+                                                  <TableCell className="text-sm py-1.5">{it.item_name}</TableCell>
+                                                  <TableCell className="text-sm py-1.5">{it.unit}</TableCell>
+                                                  <TableCell className="text-sm py-1.5 text-right">{it.qty}</TableCell>
+                                                  <TableCell className="text-sm py-1.5 text-right">{formatRp(Number(it.unit_price))}</TableCell>
+                                                  <TableCell className="text-sm py-1.5 text-right font-medium">{formatRp(Number(it.total))}</TableCell>
+                                                </TableRow>
+                                              ))}
+                                            </TableBody>
+                                          </Table>
+                                        </div>
+                                      </TableCell>
+                                    </TableRow>
+                                  )}
+                                </>
+                              );
+                            })}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    )}
+                  </Card>
+                </>
+              );
+            })()}
           </TabsContent>
 
           {/* ============ KATALOG ============ */}
