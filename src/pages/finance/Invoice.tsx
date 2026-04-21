@@ -16,6 +16,9 @@ import {
   Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList,
 } from '@/components/ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+} from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { FileText, Plus, X, Pencil, Trash2, Search, ChevronDown, ChevronRight } from 'lucide-react';
 import { format } from 'date-fns';
@@ -603,87 +606,135 @@ export default function InvoicePage() {
 
           {/* ============ KATALOG ============ */}
           <TabsContent value="katalog" className="space-y-4">
-            <Card className="glass-card">
-              <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                <CardTitle className="text-base min-w-0 break-words">{editingCat ? 'Edit Item' : 'Tambah Item Baru'}</CardTitle>
-                <div className="flex gap-2 flex-wrap w-full sm:w-auto">
-                  <CsvImportButton
-                    entityLabel="Item Katalog"
-                    headers={['name', 'unit', 'default_price']}
-                    templateFilename="template-katalog-item"
-                    sampleRows={[
-                      ['Ayam Potong', 'kg', 35000],
-                      ['Beras Premium', 'kg', 14000],
-                      ['Minyak Goreng', 'liter', 18000],
-                    ]}
-                    parseRow={(r) => {
-                      const name = (r.name || '').trim();
-                      if (!name) throw new Error('Kolom name wajib diisi');
-                      const price = Number(r.default_price);
-                      if (isNaN(price) || price < 0) throw new Error('default_price harus angka >= 0');
-                      return { name, unit: (r.unit || 'pcs').trim(), default_price: price };
-                    }}
-                    onImport={async (rows) => {
-                      const { error } = await supabase.from('item_catalog').insert(rows);
-                      if (error) return { success: 0, failed: rows.length, message: error.message };
-                      return { success: rows.length, failed: 0 };
-                    }}
-                    onImported={fetchCatalog}
-                    helperText="Format kolom: name, unit, default_price. Item akan ditambahkan sebagai baru."
-                  />
-                </div>
-              </CardHeader>
-              <CardContent className="grid grid-cols-1 md:grid-cols-[2fr_1fr_1fr_auto] gap-3 items-end">
-                <div><Label>Nama</Label><Input value={catName} onChange={(e) => setCatName(e.target.value)} placeholder="cth: Ayam Potong" /></div>
-                <div><Label>Satuan</Label><Input value={catUnit} onChange={(e) => setCatUnit(e.target.value)} placeholder="kg" /></div>
-                <div><Label>Harga Default</Label><Input type="number" value={catPrice || ''} onChange={(e) => setCatPrice(Number(e.target.value) || 0)} /></div>
-                <div className="flex gap-2">
-                  <Button onClick={submitCatalog}>{editingCat ? 'Simpan' : 'Tambah'}</Button>
-                  {editingCat && <Button variant="outline" onClick={() => { setEditingCat(null); setCatName(''); setCatPrice(0); setCatUnit('kg'); }}>Batal</Button>}
-                </div>
-              </CardContent>
-            </Card>
+            <div className="flex flex-wrap items-center gap-3">
+              <p className="text-xs text-muted-foreground italic flex-1 min-w-[200px]">
+                Item di sini tersedia sebagai pilihan saat membuat invoice.
+              </p>
+              <CsvImportButton
+                entityLabel="Item Katalog"
+                headers={['name', 'unit', 'default_price', 'default_qty']}
+                templateFilename="template-katalog-item"
+                sampleRows={[
+                  ['Ayam Potong', 'kg', 35000, 5],
+                  ['Beras Premium', 'kg', 14000, 4],
+                  ['Minyak Goreng', 'liter', 18000, 2],
+                ]}
+                parseRow={(r) => {
+                  const name = (r.name || '').trim();
+                  if (!name) throw new Error('Kolom name wajib diisi');
+                  const price = Number(r.default_price);
+                  if (isNaN(price) || price < 0) throw new Error('default_price harus angka >= 0');
+                  const qty = r.default_qty !== undefined && r.default_qty !== '' ? Number(r.default_qty) : 1;
+                  if (isNaN(qty) || qty < 0) throw new Error('default_qty harus angka >= 0');
+                  return { name, unit: (r.unit || 'pcs').trim(), default_price: price, default_qty: qty };
+                }}
+                onImport={async (rows) => {
+                  const { error } = await supabase.from('item_catalog').insert(rows);
+                  if (error) return { success: 0, failed: rows.length, message: error.message };
+                  return { success: rows.length, failed: 0 };
+                }}
+                onImported={fetchCatalog}
+                helperText="Format kolom: name, unit, default_price, default_qty. Item akan ditambahkan sebagai baru."
+              />
+              <ExportButtons
+                filename="katalog-item"
+                title="Katalog Item"
+                columns={[
+                  { header: 'Nama', accessor: 'name' },
+                  { header: 'Satuan', accessor: 'unit' },
+                  { header: 'Harga Default', accessor: (r) => formatRpExport(Number(r.default_price)) },
+                  { header: 'Qty Default', accessor: (r) => Number(r.default_qty) || 1 },
+                ]}
+                rows={catalog}
+              />
+              <Button onClick={() => openCatDialog()} className="gap-1.5">
+                <Plus className="w-4 h-4" /> Tambah Item
+              </Button>
+            </div>
 
-            <Card className="glass-card">
-              <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                <CardTitle className="text-base min-w-0 break-words">Daftar Katalog ({catalog.length})</CardTitle>
-                <ExportButtons
-                  filename="katalog-item"
-                  title="Katalog Item"
-                  columns={[
-                    { header: 'Nama', accessor: 'name' },
-                    { header: 'Satuan', accessor: 'unit' },
-                    { header: 'Harga Default', accessor: (r) => formatRpExport(Number(r.default_price)) },
-                  ]}
-                  rows={catalog}
-                />
-              </CardHeader>
-              <CardContent className="pt-2">
-                {catalog.length === 0 ? (
-                  <p className="text-sm text-muted-foreground text-center py-6">Belum ada item katalog.</p>
-                ) : (
+            <Card className="glass-card overflow-hidden">
+              {catalog.length === 0 ? (
+                <div className="py-12 text-center text-sm text-muted-foreground">
+                  Belum ada item katalog.
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
                   <Table>
-                    <TableHeader><TableRow>
-                      <TableHead>Nama</TableHead><TableHead>Satuan</TableHead>
-                      <TableHead className="text-right">Harga Default</TableHead><TableHead className="w-24"></TableHead>
-                    </TableRow></TableHeader>
+                    <TableHeader>
+                      <TableRow className="bg-muted/40 hover:bg-muted/40">
+                        <TableHead className="text-[11px] font-semibold uppercase tracking-wide">Nama Item</TableHead>
+                        <TableHead className="text-[11px] font-semibold uppercase tracking-wide">Satuan</TableHead>
+                        <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-right">Harga Satuan</TableHead>
+                        <TableHead className="text-[11px] font-semibold uppercase tracking-wide">Qty Default</TableHead>
+                        <TableHead className="text-[11px] font-semibold uppercase tracking-wide w-[150px]"></TableHead>
+                      </TableRow>
+                    </TableHeader>
                     <TableBody>
                       {catalog.map((c) => (
                         <TableRow key={c.id}>
-                          <TableCell className="font-medium">{c.name}</TableCell>
-                          <TableCell>{c.unit}</TableCell>
-                          <TableCell className="text-right">{formatRp(Number(c.default_price))}</TableCell>
-                          <TableCell className="flex gap-1 justify-end">
-                            <Button variant="ghost" size="icon" onClick={() => editCatalog(c)}><Pencil className="w-4 h-4" /></Button>
-                            <Button variant="ghost" size="icon" onClick={() => deleteCatalog(c.id)} className="text-destructive"><Trash2 className="w-4 h-4" /></Button>
+                          <TableCell className="py-2.5 text-sm font-medium">{c.name}</TableCell>
+                          <TableCell className="py-2.5 text-sm">{c.unit}</TableCell>
+                          <TableCell className="py-2.5 text-sm text-right">{formatRp(Number(c.default_price))}</TableCell>
+                          <TableCell className="py-2.5 text-sm">{Number(c.default_qty) || 1}</TableCell>
+                          <TableCell className="py-2 text-right">
+                            <div className="flex justify-end gap-1.5">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="h-7 text-[11px] px-3"
+                                onClick={() => openCatDialog(c)}
+                              >
+                                Edit
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="h-7 text-[11px] px-3 border-destructive/40 text-destructive hover:bg-destructive/10"
+                                onClick={() => deleteCatalog(c.id)}
+                              >
+                                Hapus
+                              </Button>
+                            </div>
                           </TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
                   </Table>
-                )}
-              </CardContent>
+                </div>
+              )}
             </Card>
+
+            <Dialog open={catDialogOpen} onOpenChange={(open) => { setCatDialogOpen(open); if (!open) resetCatForm(); }}>
+              <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                  <DialogTitle>{editingCat ? 'Edit Item' : 'Tambah Item Baru'}</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-3 py-2">
+                  <div>
+                    <Label>Nama</Label>
+                    <Input value={catName} onChange={(e) => setCatName(e.target.value)} placeholder="cth: Ayam Potong" />
+                  </div>
+                  <div className="grid grid-cols-3 gap-3">
+                    <div>
+                      <Label>Satuan</Label>
+                      <Input value={catUnit} onChange={(e) => setCatUnit(e.target.value)} placeholder="kg" />
+                    </div>
+                    <div>
+                      <Label>Harga Satuan</Label>
+                      <Input type="number" value={catPrice || ''} onChange={(e) => setCatPrice(Number(e.target.value) || 0)} />
+                    </div>
+                    <div>
+                      <Label>Qty Default</Label>
+                      <Input type="number" value={catQty || ''} onChange={(e) => setCatQty(Number(e.target.value) || 0)} />
+                    </div>
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => { setCatDialogOpen(false); resetCatForm(); }}>Batal</Button>
+                  <Button onClick={submitCatalog}>{editingCat ? 'Simpan' : 'Tambah'}</Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
           </TabsContent>
 
           {/* ============ RINGKASAN ============ */}
