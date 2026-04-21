@@ -128,7 +128,13 @@ export default function InvoicePage() {
     setLines((prev) => prev.length > 1 ? prev.filter((l) => l.id !== id) : prev);
 
   const pickCatalog = (lineId: string, item: CatalogItem) => {
-    updateLine(lineId, { item_name: item.name, unit: item.unit, unit_price: Number(item.default_price) || 0 });
+    const defaultQty = Number(item.default_qty) || 1;
+    updateLine(lineId, {
+      item_name: item.name,
+      unit: item.unit,
+      unit_price: Number(item.default_price) || 0,
+      qty: defaultQty,
+    });
   };
 
   const grandTotal = useMemo(
