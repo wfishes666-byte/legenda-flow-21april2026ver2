@@ -253,16 +253,16 @@ export default function InvoicePage() {
                 </div>
 
                 <div>
-                  <h3 className="font-semibold mb-2">Daftar Item</h3>
+                  <h3 className="text-sm font-semibold mb-2">Daftar Item</h3>
                   <div className="overflow-x-auto">
                     <Table>
                       <TableHeader>
                         <TableRow>
-                          <TableHead className="min-w-[220px]">Nama Item</TableHead>
-                          <TableHead className="w-24">Satuan</TableHead>
-                          <TableHead className="w-24">Qty</TableHead>
-                          <TableHead className="w-36">Harga Satuan</TableHead>
-                          <TableHead className="w-32 text-right">Total</TableHead>
+                          <TableHead className="min-w-[220px] text-xs">Nama Item</TableHead>
+                          <TableHead className="w-24 text-xs">Satuan</TableHead>
+                          <TableHead className="w-24 text-xs">Qty</TableHead>
+                          <TableHead className="w-36 text-xs">Harga Satuan</TableHead>
+                          <TableHead className="w-32 text-right text-xs">Total</TableHead>
                           <TableHead className="w-10"></TableHead>
                         </TableRow>
                       </TableHeader>
@@ -280,19 +280,19 @@ export default function InvoicePage() {
                                 />
                               </TableCell>
                               <TableCell>
-                                <Input value={line.unit} onChange={(e) => updateLine(line.id, { unit: e.target.value })} />
+                                <Input className="h-9 text-sm" value={line.unit} onChange={(e) => updateLine(line.id, { unit: e.target.value })} />
                               </TableCell>
                               <TableCell>
-                                <Input type="number" min={0} value={line.qty || ''}
+                                <Input className="h-9 text-sm" type="number" min={0} value={line.qty || ''}
                                   onChange={(e) => updateLine(line.id, { qty: Number(e.target.value) || 0 })} />
                               </TableCell>
                               <TableCell>
-                                <Input type="number" min={0} value={line.unit_price || ''}
+                                <Input className="h-9 text-sm" type="number" min={0} value={line.unit_price || ''}
                                   onChange={(e) => updateLine(line.id, { unit_price: Number(e.target.value) || 0 })} />
                               </TableCell>
-                              <TableCell className="text-right font-medium">{formatRp(total)}</TableCell>
+                              <TableCell className="text-right font-medium text-sm">{formatRp(total)}</TableCell>
                               <TableCell>
-                                <Button variant="ghost" size="icon" onClick={() => removeLine(line.id)} className="text-destructive">
+                                <Button variant="ghost" size="icon" onClick={() => removeLine(line.id)} className="text-destructive h-8 w-8">
                                   <X className="w-4 h-4" />
                                 </Button>
                               </TableCell>
@@ -302,13 +302,13 @@ export default function InvoicePage() {
                       </TableBody>
                     </Table>
                   </div>
-                  <Button variant="outline" size="sm" className="mt-3" onClick={() => setLines([...lines, newLine()])}>
-                    <Plus className="w-4 h-4 mr-1" /> Tambah Baris
+                  <Button variant="outline" size="sm" className="mt-3 text-xs h-8" onClick={() => setLines([...lines, newLine()])}>
+                    <Plus className="w-3.5 h-3.5 mr-1" /> Tambah Baris
                   </Button>
                 </div>
 
                 <div className="flex justify-end pt-2 border-t">
-                  <span className="font-bold text-lg">Grand Total: {formatRp(grandTotal)}</span>
+                  <span className="font-bold text-base">Grand Total: {formatRp(grandTotal)}</span>
                 </div>
 
                 <div className="space-y-3">
