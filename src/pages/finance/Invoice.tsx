@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import AppLayout from '@/components/AppLayout';
 import { useOutlets } from '@/hooks/useOutlets';
@@ -559,7 +559,7 @@ export default function InvoicePage() {
                                       </TableCell>
                                     </TableRow>
                                   )}
-                                </>
+                                </React.Fragment>
                               );
                             })}
                           </TableBody>
