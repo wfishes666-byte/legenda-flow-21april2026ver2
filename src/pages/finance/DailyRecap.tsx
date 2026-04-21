@@ -547,7 +547,7 @@ export default function DailyRecapPage() {
                               <td className="p-3 text-center">{formatRp(tTotal)}</td>
                               <td className={cn(
                                 'p-3 text-center font-semibold',
-                                rowSelisih > 0 && 'text-emerald-600 dark:text-emerald-400',
+                                rowSelisih > 0 && 'text-success',
                                 rowSelisih < 0 && 'text-destructive',
                               )}>
                                 {rowSelisih > 0 && '+'}{formatRp(rowSelisih)}
