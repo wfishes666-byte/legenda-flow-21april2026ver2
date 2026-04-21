@@ -28,6 +28,7 @@ interface CatalogItem {
   name: string;
   unit: string;
   default_price: number;
+  default_qty: number;
 }
 
 interface DraftLine {
