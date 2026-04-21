@@ -761,103 +761,92 @@ export default function InvoicePage() {
           </TabsContent>
 
           {/* ============ RINGKASAN ============ */}
-          <TabsContent value="ringkasan" className="space-y-4">
+          <TabsContent value="ringkasan" className="space-y-3">
             <Card className="glass-card">
-              <CardContent className="pt-6 flex flex-wrap gap-3 items-end">
+              <CardContent className="pt-4 pb-4 flex flex-wrap gap-3 items-end">
                 <div>
-                  <Label>Bulan</Label>
-                  <Input type="month" value={filterMonth} onChange={(e) => setFilterMonth(e.target.value)} className="w-40" />
+                  <Label className="text-xs">Bulan</Label>
+                  <Input type="month" value={filterMonth} onChange={(e) => setFilterMonth(e.target.value)} className="h-9 w-40" />
                 </div>
                 <div>
-                  <Label>Outlet</Label>
+                  <Label className="text-xs">Outlet</Label>
                   <Select value={filterOutlet} onValueChange={setFilterOutlet}>
-                    <SelectTrigger className="w-48"><SelectValue /></SelectTrigger>
+                    <SelectTrigger className="h-9 w-48"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">Semua Outlet</SelectItem>
                       {outlets.map((o) => <SelectItem key={o.id} value={o.id}>{o.name}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="ml-auto text-right">
-                  <p className="text-xs text-muted-foreground">Grand Total Periode</p>
-                  <p className="text-xl font-bold">{formatRp(summary.grand)}</p>
+                <div className="ml-auto">
+                  <ExportButtons
+                    filename={`ringkasan-invoice-${filterMonth}`}
+                    title={`Ringkasan Invoice - ${filterMonth}`}
+                    columns={[
+                      { header: 'Outlet', accessor: (r: OutletSummary) => r.outlet },
+                      { header: 'Invoice', accessor: (r: OutletSummary) => r.invoiceCount },
+                      { header: 'Total Tagihan', accessor: (r: OutletSummary) => formatRpExport(r.total) },
+                      { header: 'Terbayar', accessor: (r: OutletSummary) => formatRpExport(r.paid) },
+                      { header: 'Belum Dibayar', accessor: (r: OutletSummary) => formatRpExport(r.unpaid) },
+                    ]}
+                    rows={summary.rows}
+                  />
                 </div>
               </CardContent>
             </Card>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              <Card className="glass-card">
-                <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                  <CardTitle className="text-base min-w-0 break-words">Per Outlet</CardTitle>
-                  <ExportButtons
-                    filename={`ringkasan-invoice-per-outlet-${filterMonth}`}
-                    title={`Ringkasan Invoice per Outlet - ${filterMonth}`}
-                    columns={[
-                      { header: 'Outlet', accessor: (r: any) => r[0] },
-                      { header: 'Total', accessor: (r: any) => formatRpExport(r[1]) },
-                      { header: '%', accessor: (r: any) => (summary.grand > 0 ? ((r[1] / summary.grand) * 100).toFixed(1) + '%' : '0%') },
-                    ]}
-                    rows={summary.perOutlet}
-                  />
-                </CardHeader>
-                <CardContent>
-                  {summary.perOutlet.length === 0 ? (
-                    <p className="text-sm text-muted-foreground py-4 text-center">Tidak ada data.</p>
-                  ) : (
-                    <Table>
-                      <TableHeader><TableRow><TableHead>Outlet</TableHead><TableHead className="text-right">Total</TableHead><TableHead className="text-right w-20">%</TableHead></TableRow></TableHeader>
-                      <TableBody>
-                        {summary.perOutlet.map(([name, total]) => (
-                          <TableRow key={name}>
-                            <TableCell>{name}</TableCell>
-                            <TableCell className="text-right">{formatRp(total)}</TableCell>
-                            <TableCell className="text-right text-muted-foreground text-xs">
-                              {summary.grand > 0 ? ((total / summary.grand) * 100).toFixed(1) : '0'}%
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  )}
-                </CardContent>
-              </Card>
-
-              <Card className="glass-card">
-                <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                  <CardTitle className="text-base min-w-0 break-words">Per Item</CardTitle>
-                  <ExportButtons
-                    filename={`ringkasan-invoice-per-item-${filterMonth}`}
-                    title={`Ringkasan Invoice per Item - ${filterMonth}`}
-                    columns={[
-                      { header: 'Item', accessor: (r: any) => r[0] },
-                      { header: 'Qty', accessor: (r: any) => `${r[1].qty} ${r[1].unit}` },
-                      { header: 'Total', accessor: (r: any) => formatRpExport(r[1].total) },
-                    ]}
-                    rows={summary.perItem}
-                  />
-                </CardHeader>
-                <CardContent>
-                  {summary.perItem.length === 0 ? (
-                    <p className="text-sm text-muted-foreground py-4 text-center">Tidak ada data.</p>
-                  ) : (
-                    <div className="max-h-[480px] overflow-y-auto">
-                      <Table>
-                        <TableHeader><TableRow><TableHead>Item</TableHead><TableHead className="text-right">Qty</TableHead><TableHead className="text-right">Total</TableHead></TableRow></TableHeader>
-                        <TableBody>
-                          {summary.perItem.map(([name, d]) => (
-                            <TableRow key={name}>
-                              <TableCell>{name}</TableCell>
-                              <TableCell className="text-right">{d.qty.toLocaleString('id-ID')} {d.unit}</TableCell>
-                              <TableCell className="text-right">{formatRp(d.total)}</TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
+            <Card className="glass-card overflow-hidden">
+              {summary.rows.length === 0 ? (
+                <div className="py-12 text-center text-sm text-muted-foreground">
+                  Tidak ada invoice untuk periode ini.
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-muted/40 hover:bg-muted/40">
+                        <TableHead className="text-[11px] font-semibold uppercase tracking-wide">Outlet</TableHead>
+                        <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-center">Invoice</TableHead>
+                        <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-right">Total Tagihan</TableHead>
+                        <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-right">Terbayar</TableHead>
+                        <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-right">Belum Dibayar</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {summary.rows.map((r) => (
+                        <TableRow key={r.outlet}>
+                          <TableCell className="py-3 text-sm font-semibold">{r.outlet}</TableCell>
+                          <TableCell className="py-3 text-sm text-center">{r.invoiceCount}</TableCell>
+                          <TableCell className="py-3 text-sm text-right">{formatRp(r.total)}</TableCell>
+                          <TableCell className="py-3 text-sm text-right text-muted-foreground">
+                            {r.paid > 0 ? formatRp(r.paid) : <span>—</span>}
+                          </TableCell>
+                          <TableCell className="py-3 text-sm text-right">
+                            {r.unpaid > 0 ? (
+                              <span className="inline-flex items-center gap-2">
+                                <span className="inline-flex items-center justify-center min-w-[22px] h-[22px] px-1.5 rounded-full bg-yellow-100 dark:bg-yellow-900/40 text-yellow-800 dark:text-yellow-300 text-[11px] font-semibold">
+                                  {r.unpaidCount}
+                                </span>
+                                <span>{formatRp(r.unpaid)}</span>
+                              </span>
+                            ) : (
+                              <span className="text-muted-foreground">—</span>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                      <TableRow className="bg-muted/30 hover:bg-muted/30 border-t-2">
+                        <TableCell className="py-3 text-sm font-bold">Total</TableCell>
+                        <TableCell className="py-3 text-sm text-center font-bold">{summary.totals.invoiceCount}</TableCell>
+                        <TableCell className="py-3 text-sm text-right font-bold">{formatRp(summary.totals.total)}</TableCell>
+                        <TableCell className="py-3 text-sm text-right font-bold">{formatRp(summary.totals.paid)}</TableCell>
+                        <TableCell className="py-3 text-sm text-right font-bold text-destructive">{formatRp(summary.totals.unpaid)}</TableCell>
+                      </TableRow>
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </Card>
           </TabsContent>
         </Tabs>
       </div>
