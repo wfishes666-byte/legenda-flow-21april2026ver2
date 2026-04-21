@@ -14,6 +14,11 @@ import { Plus, Save, Trash2, X } from 'lucide-react';
 import { format } from 'date-fns';
 import { id as idLocale } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
+import {
+  DEFAULT_CONFIG,
+  evalSelisih,
+  type OutletFinanceConfig,
+} from '@/lib/financeConfig';
 
 type PaymentType = 'cash' | 'transfer';
 
@@ -42,21 +47,55 @@ export default function DailyRecapPage() {
   const [activeOutlet, setActiveOutlet] = useState<string>('');
   const [submitting, setSubmitting] = useState(false);
   const [reports, setReports] = useState<any[]>([]);
+  const [configs, setConfigs] = useState<Record<string, OutletFinanceConfig>>({});
 
   const canManage = role === 'admin' || role === 'management' || role === 'pic';
 
   // form state
   const [reportDate, setReportDate] = useState(new Date().toISOString().split('T')[0]);
   const [reporterName, setReporterName] = useState('');
-  const [cashStart, setCashStart] = useState(0);
-  const [cashAdded, setCashAdded] = useState(0);
+  const [incomeValues, setIncomeValues] = useState<Record<string, number>>({});
   const [notes, setNotes] = useState('');
   const [lines, setLines] = useState<ExpenseLine[]>([newLine('cash')]);
   const [expenseTab, setExpenseTab] = useState<PaymentType>('cash');
 
+  // Resolve current outlet config (fallback to default)
+  const activeConfig: OutletFinanceConfig = useMemo(() => {
+    const c = configs[activeOutlet];
+    return c ?? { outlet_id: activeOutlet, ...DEFAULT_CONFIG };
+  }, [configs, activeOutlet]);
+
+  // Load all configs once outlets known
+  useEffect(() => {
+    if (outlets.length === 0) return;
+    supabase
+      .from('outlet_finance_configs')
+      .select('*')
+      .then(({ data }) => {
+        if (!data) return;
+        const map: Record<string, OutletFinanceConfig> = {};
+        data.forEach((row: any) => {
+          map[row.outlet_id] = {
+            outlet_id: row.outlet_id,
+            income_fields: row.income_fields || [],
+            summary_groups: row.summary_groups || [],
+            selisih_formula: row.selisih_formula || '',
+          };
+        });
+        setConfigs(map);
+      });
+  }, [outlets]);
+
   useEffect(() => {
     if (!activeOutlet && outlets.length > 0) setActiveOutlet(outlets[0].id);
   }, [outlets, activeOutlet]);
+
+  // Reset income values when outlet (config) changes
+  useEffect(() => {
+    const init: Record<string, number> = {};
+    activeConfig.income_fields.forEach((f) => { init[f.key] = 0; });
+    setIncomeValues(init);
+  }, [activeOutlet, activeConfig.income_fields.length]);
 
   const fetchReports = async () => {
     if (!activeOutlet) return;
@@ -74,10 +113,21 @@ export default function DailyRecapPage() {
   // computed
   const cashLines = lines.filter((l) => l.payment_type === 'cash');
   const transferLines = lines.filter((l) => l.payment_type === 'transfer');
-  const totalCash = cashLines.reduce((s, l) => s + l.unit_price * l.qty, 0);
-  const totalTransfer = transferLines.reduce((s, l) => s + l.unit_price * l.qty, 0);
-  const totalExpense = totalCash + totalTransfer;
-  const cashRemaining = (cashStart || 0) + (cashAdded || 0) - totalCash;
+  const totalCashExpense = cashLines.reduce((s, l) => s + l.unit_price * l.qty, 0);
+  const totalTransferExpense = transferLines.reduce((s, l) => s + l.unit_price * l.qty, 0);
+  const totalExpense = totalCashExpense + totalTransferExpense;
+
+  const selisih = useMemo(() => {
+    return evalSelisih(activeConfig.selisih_formula, {
+      ...incomeValues,
+      total_expense: totalExpense,
+      total_cash_expense: totalCashExpense,
+      total_transfer_expense: totalTransferExpense,
+    });
+  }, [activeConfig.selisih_formula, incomeValues, totalExpense, totalCashExpense, totalTransferExpense]);
+
+  const sumGroup = (fieldKeys: string[] = []) =>
+    fieldKeys.reduce((s, k) => s + (incomeValues[k] || 0), 0);
 
   const activeOutletName = useMemo(
     () => outlets.find((o) => o.id === activeOutlet)?.name || '',
@@ -93,8 +143,9 @@ export default function DailyRecapPage() {
   const resetForm = () => {
     setReportDate(new Date().toISOString().split('T')[0]);
     setReporterName('');
-    setCashStart(0);
-    setCashAdded(0);
+    const init: Record<string, number> = {};
+    activeConfig.income_fields.forEach((f) => { init[f.key] = 0; });
+    setIncomeValues(init);
     setNotes('');
     setLines([newLine('cash')]);
   };
@@ -113,9 +164,10 @@ export default function DailyRecapPage() {
         outlet_id: activeOutlet,
         report_date: reportDate,
         reporter_name: reporterName,
-        starting_cash: cashStart,
-        cash_on_hand_added: cashAdded,
+        starting_cash: incomeValues['cash_start'] || 0,
+        cash_on_hand_added: incomeValues['cash_added'] || 0,
         notes,
+        extra_fields: incomeValues,
       })
       .select('id')
       .single();
@@ -182,25 +234,13 @@ export default function DailyRecapPage() {
 
           {/* INPUT TAB */}
           <TabsContent value="input" className="mt-4 space-y-4">
-            {/* Outlet tabs (chip-like) */}
-            <div className="flex gap-2 flex-wrap border-b border-border pb-3">
-              {outletsLoading && <span className="text-sm text-muted-foreground">Memuat cabang…</span>}
-              {outlets.map((o) => (
-                <button
-                  key={o.id}
-                  type="button"
-                  onClick={() => setActiveOutlet(o.id)}
-                  className={cn(
-                    'px-4 py-2 rounded-md text-sm font-medium border transition-colors',
-                    activeOutlet === o.id
-                      ? 'bg-primary text-primary-foreground border-primary'
-                      : 'bg-background text-foreground border-border hover:bg-muted'
-                  )}
-                >
-                  {o.name}
-                </button>
-              ))}
-            </div>
+            {/* Outlet tabs */}
+            <OutletTabs
+              outlets={outlets}
+              loading={outletsLoading}
+              active={activeOutlet}
+              onChange={setActiveOutlet}
+            />
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
               {/* Form */}
@@ -220,33 +260,28 @@ export default function DailyRecapPage() {
                     </div>
                   </div>
 
-                  {/* Cash on hand */}
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div>
-                      <Label>Cash on Hand Awal</Label>
-                      <Input
-                        type="number"
-                        value={cashStart || ''}
-                        onChange={(e) => setCashStart(Number(e.target.value))}
-                        placeholder="Rp 0"
-                      />
+                  {/* Dynamic income fields */}
+                  {activeConfig.income_fields.length > 0 && (
+                    <div className={cn(
+                      'grid grid-cols-1 gap-4',
+                      activeConfig.income_fields.length === 2 && 'md:grid-cols-2',
+                      activeConfig.income_fields.length >= 3 && 'md:grid-cols-3'
+                    )}>
+                      {activeConfig.income_fields.map((f) => (
+                        <div key={f.key}>
+                          <Label>{f.label}</Label>
+                          <Input
+                            type="number"
+                            value={incomeValues[f.key] || ''}
+                            onChange={(e) =>
+                              setIncomeValues((prev) => ({ ...prev, [f.key]: Number(e.target.value) }))
+                            }
+                            placeholder="Rp 0"
+                          />
+                        </div>
+                      ))}
                     </div>
-                    <div>
-                      <Label>Tambahan Cash on Hand</Label>
-                      <Input
-                        type="number"
-                        value={cashAdded || ''}
-                        onChange={(e) => setCashAdded(Number(e.target.value))}
-                        placeholder="Rp 0"
-                      />
-                    </div>
-                    <div>
-                      <Label>Sisa Cash on Hand</Label>
-                      <div className="h-10 px-3 rounded-md border border-border bg-muted/40 flex items-center font-semibold">
-                        {formatRp(cashRemaining)}
-                      </div>
-                    </div>
-                  </div>
+                  )}
 
                   {/* Pengeluaran */}
                   <div>
@@ -264,7 +299,6 @@ export default function DailyRecapPage() {
                       </TabsList>
 
                       <TabsContent value={expenseTab} className="mt-3 space-y-2">
-                        {/* Header row (desktop) */}
                         <div className="hidden md:grid grid-cols-12 gap-2 text-xs font-medium text-muted-foreground uppercase tracking-wide px-1">
                           <div className="col-span-5">Nama Item</div>
                           <div className="col-span-3">Harga</div>
@@ -323,11 +357,11 @@ export default function DailyRecapPage() {
                     <div className="mt-6 space-y-2 border-t border-border pt-4">
                       <div className="flex justify-between text-sm">
                         <span className="font-semibold">Total Cash</span>
-                        <span className="font-semibold">{formatRp(totalCash)}</span>
+                        <span className="font-semibold">{formatRp(totalCashExpense)}</span>
                       </div>
                       <div className="flex justify-between text-sm border-b border-border pb-3">
                         <span className="font-semibold">Total Transfer</span>
-                        <span className="font-semibold">{formatRp(totalTransfer)}</span>
+                        <span className="font-semibold">{formatRp(totalTransferExpense)}</span>
                       </div>
                       <div className="flex justify-between text-base">
                         <span className="font-bold">Total Pengeluaran</span>
@@ -344,7 +378,7 @@ export default function DailyRecapPage() {
                 </CardContent>
               </Card>
 
-              {/* Ringkasan Sidebar */}
+              {/* Ringkasan Sidebar (config-driven) */}
               <Card className="glass-card h-fit">
                 <CardContent className="p-0">
                   <div className="px-5 py-3 border-b border-border bg-muted/30">
@@ -353,10 +387,42 @@ export default function DailyRecapPage() {
                     </h3>
                   </div>
                   <div className="divide-y divide-border">
-                    <SummaryRow label="Cash on Hand Awal" value={formatRp(cashStart)} />
-                    <SummaryRow label="Tambahan Cash on Hand" value={formatRp(cashAdded)} />
-                    <SummaryRow label="Total Belanja (Cash on Hand)" value={formatRp(totalCash)} />
-                    <SummaryRow label="Total Pengeluaran" value={formatRp(totalExpense)} highlight />
+                    {activeConfig.summary_groups.map((g) => {
+                      // Compute group total
+                      let groupTotal = 0;
+                      if (g.is_selisih) groupTotal = selisih;
+                      else if (g.includes_expense) groupTotal = totalExpense;
+                      else groupTotal = sumGroup(g.fields);
+
+                      const fieldRows = (g.fields || [])
+                        .map((k) => activeConfig.income_fields.find((f) => f.key === k))
+                        .filter(Boolean) as { key: string; label: string }[];
+
+                      return (
+                        <div key={g.code} className={cn(g.is_selisih && 'bg-muted/60')}>
+                          <div className="flex items-center justify-between px-5 py-3">
+                            <span className="text-sm font-semibold">{g.code}. {g.label}</span>
+                            <span className="text-sm font-semibold">{formatRp(groupTotal)}</span>
+                          </div>
+                          {/* sub-rows: income fields */}
+                          {fieldRows.map((f) => (
+                            <div key={f.key} className="flex items-center justify-between px-8 pb-2 -mt-1">
+                              <span className="text-xs text-muted-foreground">{f.label}</span>
+                              <span className="text-xs">{formatRp(incomeValues[f.key] || 0)}</span>
+                            </div>
+                          ))}
+                          {/* sub-rows: expense breakdown */}
+                          {g.expense_breakdown?.map((t) => (
+                            <div key={t} className="flex items-center justify-between px-8 pb-2 -mt-1">
+                              <span className="text-xs text-muted-foreground capitalize">{t}</span>
+                              <span className="text-xs">
+                                {formatRp(t === 'cash' ? totalCashExpense : totalTransferExpense)}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      );
+                    })}
                   </div>
                 </CardContent>
               </Card>
@@ -365,23 +431,13 @@ export default function DailyRecapPage() {
 
           {/* REKAP TAB */}
           <TabsContent value="recap" className="mt-4">
-            <div className="flex gap-2 flex-wrap border-b border-border pb-3 mb-4">
-              {outlets.map((o) => (
-                <button
-                  key={o.id}
-                  type="button"
-                  onClick={() => setActiveOutlet(o.id)}
-                  className={cn(
-                    'px-4 py-2 rounded-md text-sm font-medium border transition-colors',
-                    activeOutlet === o.id
-                      ? 'bg-primary text-primary-foreground border-primary'
-                      : 'bg-background text-foreground border-border hover:bg-muted'
-                  )}
-                >
-                  {o.name}
-                </button>
-              ))}
-            </div>
+            <OutletTabs
+              outlets={outlets}
+              loading={outletsLoading}
+              active={activeOutlet}
+              onChange={setActiveOutlet}
+              className="mb-4"
+            />
 
             <Card className="glass-card">
               <CardContent className="p-0">
@@ -391,8 +447,6 @@ export default function DailyRecapPage() {
                       <tr className="border-b border-border text-left text-muted-foreground">
                         <th className="p-3 font-medium">Tanggal</th>
                         <th className="p-3 font-medium">Pelapor</th>
-                        <th className="p-3 font-medium">Cash Awal</th>
-                        <th className="p-3 font-medium">Tambahan</th>
                         <th className="p-3 font-medium">Cash</th>
                         <th className="p-3 font-medium">Transfer</th>
                         <th className="p-3 font-medium">Total Pengeluaran</th>
@@ -408,8 +462,6 @@ export default function DailyRecapPage() {
                           <tr key={r.id} className="border-b border-border/50 hover:bg-muted/30">
                             <td className="p-3">{r.report_date}</td>
                             <td className="p-3">{r.reporter_name || '-'}</td>
-                            <td className="p-3">{formatRp(r.starting_cash || 0)}</td>
-                            <td className="p-3">{formatRp(r.cash_on_hand_added || 0)}</td>
                             <td className="p-3">{formatRp(tCash)}</td>
                             <td className="p-3">{formatRp(tTransfer)}</td>
                             <td className="p-3"><Badge variant="secondary">{formatRp(tCash + tTransfer)}</Badge></td>
@@ -425,7 +477,7 @@ export default function DailyRecapPage() {
                       })}
                       {reports.length === 0 && (
                         <tr>
-                          <td colSpan={role === 'admin' ? 8 : 7} className="p-8 text-center text-muted-foreground">
+                          <td colSpan={role === 'admin' ? 6 : 5} className="p-8 text-center text-muted-foreground">
                             Belum ada laporan untuk cabang ini.
                           </td>
                         </tr>
@@ -442,11 +494,33 @@ export default function DailyRecapPage() {
   );
 }
 
-function SummaryRow({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
+function OutletTabs({
+  outlets, loading, active, onChange, className,
+}: {
+  outlets: { id: string; name: string }[];
+  loading: boolean;
+  active: string;
+  onChange: (id: string) => void;
+  className?: string;
+}) {
   return (
-    <div className={cn('flex items-center justify-between px-5 py-3', highlight && 'bg-muted/60')}>
-      <span className={cn('text-sm', highlight ? 'font-semibold' : 'text-muted-foreground')}>{label}</span>
-      <span className="text-sm font-semibold">{value}</span>
+    <div className={cn('flex gap-2 flex-wrap border-b border-border pb-3', className)}>
+      {loading && <span className="text-sm text-muted-foreground">Memuat cabang…</span>}
+      {outlets.map((o) => (
+        <button
+          key={o.id}
+          type="button"
+          onClick={() => onChange(o.id)}
+          className={cn(
+            'px-4 py-2 rounded-md text-sm font-medium border transition-colors',
+            active === o.id
+              ? 'bg-primary text-primary-foreground border-primary'
+              : 'bg-background text-foreground border-border hover:bg-muted'
+          )}
+        >
+          {o.name}
+        </button>
+      ))}
     </div>
   );
 }

@@ -740,6 +740,44 @@ export type Database = {
         }
         Relationships: []
       }
+      outlet_finance_configs: {
+        Row: {
+          created_at: string
+          id: string
+          income_fields: Json
+          outlet_id: string
+          selisih_formula: string
+          summary_groups: Json
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          income_fields?: Json
+          outlet_id: string
+          selisih_formula?: string
+          summary_groups?: Json
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          income_fields?: Json
+          outlet_id?: string
+          selisih_formula?: string
+          summary_groups?: Json
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "outlet_finance_configs_outlet_id_fkey"
+            columns: ["outlet_id"]
+            isOneToOne: true
+            referencedRelation: "outlets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       outlets: {
         Row: {
           created_at: string | null
