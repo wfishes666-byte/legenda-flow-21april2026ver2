@@ -161,7 +161,7 @@ export default function ProfitLossPage() {
     setSaving(true);
     try {
       for (const [id, category] of entries) {
-        await supabase.from('expense_items').update({ category }).eq('id', id);
+        await supabase.from('finance_expense_items').update({ category }).eq('id', id);
       }
       toast({ title: 'Berhasil disimpan', description: `${entries.length} item diperbarui.` });
       await fetchData();
