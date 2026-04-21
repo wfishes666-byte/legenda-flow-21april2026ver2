@@ -213,28 +213,48 @@ export default function InvoicePage() {
   };
 
   // ====== Katalog handlers ======
-  const submitCatalog = async () => {
-    if (!catName.trim()) return;
-    if (editingCat) {
-      const { error } = await supabase.from('item_catalog').update({
-        name: catName.trim(), unit: catUnit, default_price: catPrice,
-      }).eq('id', editingCat);
-      if (error) toast({ title: 'Gagal', description: error.message, variant: 'destructive' });
-      else toast({ title: 'Item diperbarui' });
+  const resetCatForm = () => {
+    setEditingCat(null);
+    setCatName(''); setCatUnit('kg'); setCatPrice(0); setCatQty(1);
+  };
+
+  const openCatDialog = (c?: CatalogItem) => {
+    if (c) {
+      setEditingCat(c.id);
+      setCatName(c.name); setCatUnit(c.unit);
+      setCatPrice(Number(c.default_price));
+      setCatQty(Number(c.default_qty) || 1);
     } else {
-      const { error } = await supabase.from('item_catalog').insert({
-        name: catName.trim(), unit: catUnit, default_price: catPrice,
-      });
-      if (error) toast({ title: 'Gagal', description: error.message, variant: 'destructive' });
-      else toast({ title: 'Item ditambahkan' });
+      resetCatForm();
     }
-    setCatName(''); setCatPrice(0); setCatUnit('kg'); setEditingCat(null);
+    setCatDialogOpen(true);
+  };
+
+  const submitCatalog = async () => {
+    if (!catName.trim()) {
+      toast({ title: 'Nama item wajib diisi', variant: 'destructive' });
+      return;
+    }
+    const payload = {
+      name: catName.trim(),
+      unit: catUnit,
+      default_price: catPrice,
+      default_qty: catQty,
+    };
+    if (editingCat) {
+      const { error } = await supabase.from('item_catalog').update(payload).eq('id', editingCat);
+      if (error) { toast({ title: 'Gagal', description: error.message, variant: 'destructive' }); return; }
+      toast({ title: 'Item diperbarui' });
+    } else {
+      const { error } = await supabase.from('item_catalog').insert(payload);
+      if (error) { toast({ title: 'Gagal', description: error.message, variant: 'destructive' }); return; }
+      toast({ title: 'Item ditambahkan' });
+    }
+    resetCatForm();
+    setCatDialogOpen(false);
     fetchCatalog();
   };
 
-  const editCatalog = (c: CatalogItem) => {
-    setEditingCat(c.id); setCatName(c.name); setCatUnit(c.unit); setCatPrice(Number(c.default_price));
-  };
   const deleteCatalog = async (id: string) => {
     if (!confirm('Hapus item katalog?')) return;
     const { error } = await supabase.from('item_catalog').delete().eq('id', id);
