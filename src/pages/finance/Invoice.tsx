@@ -73,7 +73,12 @@ export default function InvoicePage() {
   // Rekap
   const [invoices, setInvoices] = useState<InvoiceRow[]>([]);
   const [filterOutlet, setFilterOutlet] = useState<string>('all');
+  const [filterStatus, setFilterStatus] = useState<'all' | 'unpaid' | 'paid'>('all');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [expandedInv, setExpandedInv] = useState<string | null>(null);
+  // Ringkasan still uses month filter
   const [filterMonth, setFilterMonth] = useState(format(new Date(), 'yyyy-MM'));
+  const [recipient, setRecipient] = useState('');
 
   // Katalog
   const [catName, setCatName] = useState('');
