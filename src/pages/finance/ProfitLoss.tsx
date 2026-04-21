@@ -376,18 +376,39 @@ export default function ProfitLossPage() {
           </TabsContent>
 
           {/* TAB 2: LAPORAN L/R */}
-          <TabsContent value="lr" className="space-y-6">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <TabsContent value="lr" className="space-y-4">
+            {/* Outlet filter chips — same style as Input Akun tab */}
+            <div className="flex flex-wrap gap-2">
+              <Button
+                size="sm"
+                variant={lrOutletFilter === 'all' ? 'default' : 'outline'}
+                onClick={() => setLrOutletFilter('all')}
+              >
+                Semua
+              </Button>
+              {outlets.map((o) => (
+                <Button
+                  key={o.id}
+                  size="sm"
+                  variant={lrOutletFilter === o.id ? 'default' : 'outline'}
+                  onClick={() => setLrOutletFilter(o.id)}
+                >
+                  {o.name}
+                </Button>
+              ))}
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-4 items-start">
               {/* Tabel Laba Rugi */}
-              <Card className="lg:col-span-2 overflow-hidden glass-card border-0 p-0">
-                <div className="bg-destructive text-destructive-foreground py-5 text-center">
-                  <h2 className="text-xl font-bold">Laporan Laba Rugi</h2>
-                  <p className="text-sm opacity-90">
+              <Card className="overflow-hidden glass-card border-0 p-0">
+                <div className="bg-destructive text-destructive-foreground py-4 text-center">
+                  <h2 className="text-lg font-bold">Laporan Laba Rugi</h2>
+                  <p className="text-xs opacity-90">
                     Per {format(new Date(`${month}-01`), 'MMMM yyyy', { locale: localeId })}
                   </p>
                 </div>
                 <div className="divide-y">
-                  <div className="flex items-center justify-between px-5 py-3 font-semibold text-primary">
+                  <div className="flex items-center justify-between px-4 py-2.5 text-sm font-semibold text-primary">
                     <span>Total Pendapatan</span>
                     <span>{formatRp(totalIncome)}</span>
                   </div>
@@ -399,7 +420,7 @@ export default function ProfitLossPage() {
                       return (
                         <div
                           key={cat}
-                          className={`grid grid-cols-[1fr_auto_70px] items-center px-5 py-3 gap-4 ${
+                          className={`grid grid-cols-[1fr_auto_60px] items-center px-4 py-2.5 gap-3 ${
                             isUncategorized ? 'bg-yellow-500/10' : ''
                           }`}
                         >
@@ -411,7 +432,7 @@ export default function ProfitLossPage() {
                         </div>
                       );
                     })}
-                  <div className="grid grid-cols-[1fr_auto_70px] items-center px-5 py-3 gap-4 font-semibold text-destructive">
+                  <div className="grid grid-cols-[1fr_auto_60px] items-center px-4 py-2.5 gap-3 text-sm font-semibold text-destructive">
                     <span>Total Pengeluaran</span>
                     <span className="text-right">{formatRp(totalExpenses)}</span>
                     <span className="text-xs text-right">
