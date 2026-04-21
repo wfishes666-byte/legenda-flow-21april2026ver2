@@ -141,9 +141,29 @@ export default function InvoicePage() {
     setSaving(true);
     try {
       const total = valid.reduce((s, l) => s + l.qty * l.unit_price, 0);
+      // Generate invoice number INV-YYYYMMDD-#### (sequential per day)
+      const datePrefix = invDate.replace(/-/g, '');
+      const { data: existingNums } = await supabase
+        .from('invoices')
+        .select('invoice_number')
+        .like('invoice_number', `INV-${datePrefix}-%`);
+      const maxSeq = ((existingNums as any[]) || []).reduce((m, r) => {
+        const seq = parseInt((r.invoice_number || '').split('-').pop() || '0', 10);
+        return Number.isFinite(seq) && seq > m ? seq : m;
+      }, 0);
+      const invoiceNumber = `INV-${datePrefix}-${String(maxSeq + 1).padStart(4, '0')}`;
       const { data: inv, error } = await supabase
         .from('invoices')
-        .insert({ outlet_id: outletId, invoice_date: invDate, total, created_by: user.id, notes: '' })
+        .insert({
+          outlet_id: outletId,
+          invoice_date: invDate,
+          total,
+          created_by: user.id,
+          notes: '',
+          invoice_number: invoiceNumber,
+          recipient: recipient.trim() || null,
+          status: 'unpaid',
+        } as any)
         .select('id').single();
       if (error) throw error;
       const itemsPayload = valid.map((l) => ({
@@ -156,13 +176,24 @@ export default function InvoicePage() {
       }));
       const { error: ie } = await supabase.from('invoice_items').insert(itemsPayload);
       if (ie) throw ie;
-      toast({ title: 'Invoice dibuat', description: `${valid.length} item, total ${formatRp(total)}` });
+      toast({ title: `Invoice ${invoiceNumber} dibuat`, description: `${valid.length} item, total ${formatRp(total)}` });
       setLines([newLine()]);
+      setRecipient('');
       fetchInvoices();
       setTab('rekap');
     } catch (e: any) {
       toast({ title: 'Gagal', description: e.message, variant: 'destructive' });
     } finally { setSaving(false); }
+  };
+
+  const togglePaid = async (inv: InvoiceRow) => {
+    const next = inv.status === 'paid' ? 'unpaid' : 'paid';
+    const { error } = await supabase
+      .from('invoices')
+      .update({ status: next, paid_at: next === 'paid' ? new Date().toISOString() : null } as any)
+      .eq('id', inv.id);
+    if (error) toast({ title: 'Gagal', description: error.message, variant: 'destructive' });
+    else { toast({ title: next === 'paid' ? 'Ditandai terbayar' : 'Dibatalkan terbayar' }); fetchInvoices(); }
   };
 
   const deleteInvoice = async (id: string) => {
