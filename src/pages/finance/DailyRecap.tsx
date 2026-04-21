@@ -81,6 +81,7 @@ export default function DailyRecapPage() {
             pair_groups: row.pair_groups || [],
             summary_groups: row.summary_groups || [],
             selisih_formula: row.selisih_formula || '',
+            selisih_inline_label: row.selisih_inline_label || '',
           };
         });
         setConfigs(map);
