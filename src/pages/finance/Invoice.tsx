@@ -17,7 +17,7 @@ import {
 } from '@/components/ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useToast } from '@/hooks/use-toast';
-import { FileText, Plus, X, Pencil, Trash2 } from 'lucide-react';
+import { FileText, Plus, X, Pencil, Trash2, Search, ChevronDown, ChevronRight } from 'lucide-react';
 import { format } from 'date-fns';
 import { CsvImportButton } from '@/components/CsvImportButton';
 import { ExportButtons } from '@/components/ExportButtons';
