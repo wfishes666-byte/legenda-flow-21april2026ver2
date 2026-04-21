@@ -48,11 +48,15 @@ export function CollapsibleSection({
           {icon}
           <span className="font-semibold text-base break-words min-w-0">{title}</span>
         </div>
-        <div className="flex items-center gap-2 shrink-0" onClick={(e) => e.stopPropagation()}>
-          {rightSlot}
+        <div className="flex items-center gap-2 shrink-0">
+          {rightSlot && (
+            <span onClick={(e) => e.stopPropagation()} className="flex items-center gap-2">
+              {rightSlot}
+            </span>
+          )}
           <ChevronDown
             className={cn(
-              'w-5 h-5 text-muted-foreground transition-transform duration-200',
+              'w-5 h-5 text-muted-foreground transition-transform duration-200 pointer-events-none',
               open && 'rotate-180'
             )}
           />
