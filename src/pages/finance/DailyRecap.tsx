@@ -78,6 +78,7 @@ export default function DailyRecapPage() {
           map[row.outlet_id] = {
             outlet_id: row.outlet_id,
             income_fields: row.income_fields || [],
+            pair_groups: row.pair_groups || [],
             summary_groups: row.summary_groups || [],
             selisih_formula: row.selisih_formula || '',
           };
