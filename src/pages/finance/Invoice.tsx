@@ -275,7 +275,7 @@ export default function InvoicePage() {
           <TabsContent value="generate">
             <Card className="glass-card">
               <CardContent className="pt-6 space-y-5">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-md">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-2xl">
                   <div>
                     <Label>Outlet</Label>
                     <Select value={outletId} onValueChange={setOutletId}>
@@ -288,6 +288,10 @@ export default function InvoicePage() {
                   <div>
                     <Label>Tanggal</Label>
                     <Input type="date" value={invDate} onChange={(e) => setInvDate(e.target.value)} />
+                  </div>
+                  <div>
+                    <Label>Kepada (opsional)</Label>
+                    <Input value={recipient} onChange={(e) => setRecipient(e.target.value)} placeholder="Nama supplier / vendor" />
                   </div>
                 </div>
 
