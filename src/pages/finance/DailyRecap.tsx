@@ -2,123 +2,152 @@ import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import AppLayout from '@/components/AppLayout';
-import OutletSelector from '@/components/OutletSelector';
 import { useOutlets } from '@/hooks/useOutlets';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
-import { FileText, Plus, Save, Trash2 } from 'lucide-react';
+import { Plus, Save, Trash2, X } from 'lucide-react';
 import { format } from 'date-fns';
-import { ExportButtons } from '@/components/ExportButtons';
-import { formatRpExport } from '@/lib/exportUtils';
+import { id as idLocale } from 'date-fns/locale';
+import { cn } from '@/lib/utils';
 
-interface FinanceReport {
+type PaymentType = 'cash' | 'transfer';
+
+interface ExpenseLine {
   id: string;
-  user_id: string;
-  outlet_id: string | null;
-  report_date: string;
-  reporter_name: string | null;
-  starting_cash: number | null;
-  daily_offline_income: number | null;
-  online_delivery_sales: number | null;
-  shopeefood_sales: number | null;
-  gofood_sales: number | null;
-  grabfood_sales: number | null;
-  ending_physical_cash: number | null;
-  ending_qris_cash: number | null;
-  total_expense: number | null;
-  notes: string | null;
+  payment_type: PaymentType;
+  item_name: string;
+  unit_price: number;
+  qty: number;
 }
+
+const newLine = (payment_type: PaymentType): ExpenseLine => ({
+  id: crypto.randomUUID(),
+  payment_type,
+  item_name: '',
+  unit_price: 0,
+  qty: 0,
+});
 
 const formatRp = (v: number) => `Rp ${(v || 0).toLocaleString('id-ID')}`;
 
 export default function DailyRecapPage() {
   const { user, role } = useAuth();
   const { toast } = useToast();
-  const { outlets, selectedOutlet, setSelectedOutlet } = useOutlets();
-  const [reports, setReports] = useState<FinanceReport[]>([]);
-  const [profiles, setProfiles] = useState<any[]>([]);
+  const { outlets, loading: outletsLoading } = useOutlets();
+  const [activeOutlet, setActiveOutlet] = useState<string>('');
   const [submitting, setSubmitting] = useState(false);
+  const [reports, setReports] = useState<any[]>([]);
 
-  const canManage = role === 'admin' || role === 'management';
+  const canManage = role === 'admin' || role === 'management' || role === 'pic';
 
-  const [form, setForm] = useState({
-    report_date: new Date().toISOString().split('T')[0],
-    reporter_name: '',
-    starting_cash: 0,
-    daily_offline_income: 0,
-    shopeefood_sales: 0,
-    gofood_sales: 0,
-    grabfood_sales: 0,
-    ending_physical_cash: 0,
-    ending_qris_cash: 0,
-    total_expense: 0,
-    notes: '',
-  });
+  // form state
+  const [reportDate, setReportDate] = useState(new Date().toISOString().split('T')[0]);
+  const [reporterName, setReporterName] = useState('');
+  const [cashStart, setCashStart] = useState(0);
+  const [cashAdded, setCashAdded] = useState(0);
+  const [notes, setNotes] = useState('');
+  const [lines, setLines] = useState<ExpenseLine[]>([newLine('cash')]);
+  const [expenseTab, setExpenseTab] = useState<PaymentType>('cash');
 
-  const fetchData = async () => {
-    let query = supabase
+  useEffect(() => {
+    if (!activeOutlet && outlets.length > 0) setActiveOutlet(outlets[0].id);
+  }, [outlets, activeOutlet]);
+
+  const fetchReports = async () => {
+    if (!activeOutlet) return;
+    const { data } = await supabase
       .from('finance_daily_reports')
-      .select('*')
+      .select('*, finance_expense_items(*)')
+      .eq('outlet_id', activeOutlet)
       .order('report_date', { ascending: false })
-      .limit(300);
-    if (selectedOutlet) query = query.eq('outlet_id', selectedOutlet);
-    const { data } = await query;
-    if (data) setReports(data as FinanceReport[]);
-    const { data: p } = await supabase.from('profiles').select('user_id, full_name');
-    if (p) setProfiles(p);
+      .limit(100);
+    if (data) setReports(data);
   };
 
-  useEffect(() => { fetchData(); }, [role, selectedOutlet]);
+  useEffect(() => { fetchReports(); }, [activeOutlet]);
 
-  const outletMap = useMemo(() => new Map(outlets.map(o => [o.id, o.name])), [outlets]);
-  const profileMap = useMemo(() => new Map(profiles.map((p: any) => [p.user_id, p.full_name])), [profiles]);
+  // computed
+  const cashLines = lines.filter((l) => l.payment_type === 'cash');
+  const transferLines = lines.filter((l) => l.payment_type === 'transfer');
+  const totalCash = cashLines.reduce((s, l) => s + l.unit_price * l.qty, 0);
+  const totalTransfer = transferLines.reduce((s, l) => s + l.unit_price * l.qty, 0);
+  const totalExpense = totalCash + totalTransfer;
+  const cashRemaining = (cashStart || 0) + (cashAdded || 0) - totalCash;
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const activeOutletName = useMemo(
+    () => outlets.find((o) => o.id === activeOutlet)?.name || '',
+    [outlets, activeOutlet]
+  );
+
+  const updateLine = (id: string, patch: Partial<ExpenseLine>) => {
+    setLines((prev) => prev.map((l) => (l.id === id ? { ...l, ...patch } : l)));
+  };
+  const removeLine = (id: string) => setLines((prev) => prev.filter((l) => l.id !== id));
+  const addLine = () => setLines((prev) => [...prev, newLine(expenseTab)]);
+
+  const resetForm = () => {
+    setReportDate(new Date().toISOString().split('T')[0]);
+    setReporterName('');
+    setCashStart(0);
+    setCashAdded(0);
+    setNotes('');
+    setLines([newLine('cash')]);
+  };
+
+  const handleSubmit = async () => {
     if (!user) return;
-    if (!selectedOutlet) {
+    if (!activeOutlet) {
       toast({ title: 'Pilih cabang dulu', variant: 'destructive' });
       return;
     }
     setSubmitting(true);
-    const online = form.shopeefood_sales + form.gofood_sales + form.grabfood_sales;
-    const { error } = await supabase.from('finance_daily_reports').insert({
-      user_id: user.id,
-      outlet_id: selectedOutlet,
-      report_date: form.report_date,
-      reporter_name: form.reporter_name,
-      starting_cash: form.starting_cash,
-      daily_offline_income: form.daily_offline_income,
-      online_delivery_sales: online,
-      shopeefood_sales: form.shopeefood_sales,
-      gofood_sales: form.gofood_sales,
-      grabfood_sales: form.grabfood_sales,
-      ending_physical_cash: form.ending_physical_cash,
-      ending_qris_cash: form.ending_qris_cash,
-      total_expense: form.total_expense,
-      notes: form.notes,
-    });
-    setSubmitting(false);
-    if (error) {
-      toast({ title: 'Gagal simpan', description: error.message, variant: 'destructive' });
+    const { data: report, error } = await supabase
+      .from('finance_daily_reports')
+      .insert({
+        user_id: user.id,
+        outlet_id: activeOutlet,
+        report_date: reportDate,
+        reporter_name: reporterName,
+        starting_cash: cashStart,
+        cash_on_hand_added: cashAdded,
+        notes,
+      })
+      .select('id')
+      .single();
+
+    if (error || !report) {
+      setSubmitting(false);
+      toast({ title: 'Gagal simpan', description: error?.message, variant: 'destructive' });
       return;
     }
+
+    const itemsToInsert = lines
+      .filter((l) => l.item_name.trim() !== '' || l.unit_price > 0)
+      .map((l) => ({
+        report_id: report.id,
+        payment_type: l.payment_type,
+        item_name: l.item_name,
+        unit_price: l.unit_price,
+        qty: l.qty,
+        subtotal: l.unit_price * l.qty,
+      }));
+
+    if (itemsToInsert.length > 0) {
+      const { error: itemErr } = await supabase.from('finance_expense_items').insert(itemsToInsert);
+      if (itemErr) {
+        toast({ title: 'Item pengeluaran gagal disimpan', description: itemErr.message, variant: 'destructive' });
+      }
+    }
+
+    setSubmitting(false);
     toast({ title: 'Tersimpan', description: 'Laporan harian finance ditambahkan.' });
-    setForm({
-      report_date: new Date().toISOString().split('T')[0],
-      reporter_name: '',
-      starting_cash: 0, daily_offline_income: 0,
-      shopeefood_sales: 0, gofood_sales: 0, grabfood_sales: 0,
-      ending_physical_cash: 0, ending_qris_cash: 0, total_expense: 0,
-      notes: '',
-    });
-    fetchData();
+    resetForm();
+    fetchReports();
   };
 
   const handleDelete = async (id: string) => {
@@ -129,50 +158,231 @@ export default function DailyRecapPage() {
       return;
     }
     toast({ title: 'Dihapus' });
-    fetchData();
+    fetchReports();
   };
+
+  const visibleLines = lines.filter((l) => l.payment_type === expenseTab);
 
   return (
     <AppLayout>
-      <div className="max-w-6xl mx-auto space-y-6">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <div>
-            <h1 className="text-2xl md:text-3xl font-bold font-sans flex items-center gap-3">
-              <FileText className="w-7 h-7" /> Laporan Harian Finance
-            </h1>
-            <p className="text-sm text-muted-foreground mt-1">
-              Data finance internal — terpisah dari Laporan Harian Outlet (input crew).
-            </p>
-          </div>
-          <div className="flex gap-2 items-center flex-wrap">
-            <OutletSelector outlets={outlets} selectedOutlet={selectedOutlet} onSelect={setSelectedOutlet} />
-            <ExportButtons
-              filename={`laporan-harian-finance-${format(new Date(), 'yyyy-MM-dd')}`}
-              title="Laporan Harian Finance"
-              orientation="landscape"
-              columns={[
-                { header: 'Tanggal', accessor: 'report_date' },
-                { header: 'Cabang', accessor: (r: any) => outletMap.get(r.outlet_id) || '-' },
-                { header: 'Pelapor', accessor: (r: any) => r.reporter_name || profileMap.get(r.user_id) || '-' },
-                { header: 'Kas Awal', accessor: (r: any) => formatRpExport(r.starting_cash) },
-                { header: 'Offline', accessor: (r: any) => formatRpExport(r.daily_offline_income) },
-                { header: 'Online', accessor: (r: any) => formatRpExport(r.online_delivery_sales) },
-                { header: 'Kas Fisik', accessor: (r: any) => formatRpExport(r.ending_physical_cash) },
-                { header: 'QRIS', accessor: (r: any) => formatRpExport(r.ending_qris_cash) },
-                { header: 'Pengeluaran', accessor: (r: any) => formatRpExport(r.total_expense) },
-              ]}
-              rows={reports}
-            />
-          </div>
+      <div className="max-w-7xl mx-auto space-y-6">
+        {/* Header */}
+        <div>
+          <h1 className="text-2xl md:text-3xl font-bold font-sans">Laporan Harian</h1>
+          <p className="text-sm text-muted-foreground mt-1 capitalize">
+            {format(new Date(), 'EEEE, d MMMM yyyy', { locale: idLocale })}
+          </p>
         </div>
 
-        <Tabs defaultValue="recap" className="w-full">
+        <Tabs defaultValue="input" className="w-full">
           <TabsList>
-            <TabsTrigger value="recap">Rekap</TabsTrigger>
-            {canManage && <TabsTrigger value="input">Input Manual</TabsTrigger>}
+            <TabsTrigger value="input">Input Laporan</TabsTrigger>
+            <TabsTrigger value="recap">Rekap Laporan</TabsTrigger>
           </TabsList>
 
+          {/* INPUT TAB */}
+          <TabsContent value="input" className="mt-4 space-y-4">
+            {/* Outlet tabs (chip-like) */}
+            <div className="flex gap-2 flex-wrap border-b border-border pb-3">
+              {outletsLoading && <span className="text-sm text-muted-foreground">Memuat cabang…</span>}
+              {outlets.map((o) => (
+                <button
+                  key={o.id}
+                  type="button"
+                  onClick={() => setActiveOutlet(o.id)}
+                  className={cn(
+                    'px-4 py-2 rounded-md text-sm font-medium border transition-colors',
+                    activeOutlet === o.id
+                      ? 'bg-primary text-primary-foreground border-primary'
+                      : 'bg-background text-foreground border-border hover:bg-muted'
+                  )}
+                >
+                  {o.name}
+                </button>
+              ))}
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+              {/* Form */}
+              <Card className="glass-card lg:col-span-2">
+                <CardContent className="p-6 space-y-6">
+                  <h2 className="text-lg font-semibold">{activeOutletName || 'Pilih cabang'}</h2>
+
+                  {/* Tanggal & Pelapor */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Label>Tanggal</Label>
+                      <Input type="date" value={reportDate} onChange={(e) => setReportDate(e.target.value)} />
+                    </div>
+                    <div>
+                      <Label>Nama Pelapor</Label>
+                      <Input value={reporterName} onChange={(e) => setReporterName(e.target.value)} placeholder="Opsional" />
+                    </div>
+                  </div>
+
+                  {/* Cash on hand */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <Label>Cash on Hand Awal</Label>
+                      <Input
+                        type="number"
+                        value={cashStart || ''}
+                        onChange={(e) => setCashStart(Number(e.target.value))}
+                        placeholder="Rp 0"
+                      />
+                    </div>
+                    <div>
+                      <Label>Tambahan Cash on Hand</Label>
+                      <Input
+                        type="number"
+                        value={cashAdded || ''}
+                        onChange={(e) => setCashAdded(Number(e.target.value))}
+                        placeholder="Rp 0"
+                      />
+                    </div>
+                    <div>
+                      <Label>Sisa Cash on Hand</Label>
+                      <div className="h-10 px-3 rounded-md border border-border bg-muted/40 flex items-center font-semibold">
+                        {formatRp(cashRemaining)}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Pengeluaran */}
+                  <div>
+                    <div className="flex items-center justify-between mb-3">
+                      <h3 className="font-semibold">Pengeluaran</h3>
+                      <Button type="button" size="sm" onClick={addLine}>
+                        <Plus className="w-4 h-4 mr-1" /> Tambah
+                      </Button>
+                    </div>
+
+                    <Tabs value={expenseTab} onValueChange={(v) => setExpenseTab(v as PaymentType)}>
+                      <TabsList>
+                        <TabsTrigger value="cash">Cash</TabsTrigger>
+                        <TabsTrigger value="transfer">Transfer</TabsTrigger>
+                      </TabsList>
+
+                      <TabsContent value={expenseTab} className="mt-3 space-y-2">
+                        {/* Header row (desktop) */}
+                        <div className="hidden md:grid grid-cols-12 gap-2 text-xs font-medium text-muted-foreground uppercase tracking-wide px-1">
+                          <div className="col-span-5">Nama Item</div>
+                          <div className="col-span-3">Harga</div>
+                          <div className="col-span-2">Qty</div>
+                          <div className="col-span-2 text-right">Subtotal</div>
+                        </div>
+
+                        {visibleLines.length === 0 && (
+                          <p className="text-sm text-muted-foreground py-4 text-center">
+                            Belum ada item. Klik <span className="font-medium">+ Tambah</span> untuk menambah.
+                          </p>
+                        )}
+
+                        {visibleLines.map((l) => {
+                          const subtotal = l.unit_price * l.qty;
+                          return (
+                            <div key={l.id} className="grid grid-cols-12 gap-2 items-center">
+                              <Input
+                                className="col-span-12 md:col-span-5"
+                                placeholder="Nama Item"
+                                value={l.item_name}
+                                onChange={(e) => updateLine(l.id, { item_name: e.target.value })}
+                              />
+                              <Input
+                                className="col-span-5 md:col-span-3"
+                                type="number"
+                                placeholder="Rp 0"
+                                value={l.unit_price || ''}
+                                onChange={(e) => updateLine(l.id, { unit_price: Number(e.target.value) })}
+                              />
+                              <Input
+                                className="col-span-3 md:col-span-2"
+                                type="number"
+                                value={l.qty || ''}
+                                onChange={(e) => updateLine(l.id, { qty: Number(e.target.value) })}
+                              />
+                              <div className="col-span-3 md:col-span-1 text-right font-medium text-sm">
+                                {formatRp(subtotal)}
+                              </div>
+                              <Button
+                                type="button"
+                                size="icon"
+                                variant="ghost"
+                                className="col-span-1 md:col-span-1 h-9 w-9 text-destructive justify-self-end"
+                                onClick={() => removeLine(l.id)}
+                              >
+                                <X className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          );
+                        })}
+                      </TabsContent>
+                    </Tabs>
+
+                    {/* Totals */}
+                    <div className="mt-6 space-y-2 border-t border-border pt-4">
+                      <div className="flex justify-between text-sm">
+                        <span className="font-semibold">Total Cash</span>
+                        <span className="font-semibold">{formatRp(totalCash)}</span>
+                      </div>
+                      <div className="flex justify-between text-sm border-b border-border pb-3">
+                        <span className="font-semibold">Total Transfer</span>
+                        <span className="font-semibold">{formatRp(totalTransfer)}</span>
+                      </div>
+                      <div className="flex justify-between text-base">
+                        <span className="font-bold">Total Pengeluaran</span>
+                        <span className="font-bold">{formatRp(totalExpense)}</span>
+                      </div>
+                    </div>
+
+                    <div className="mt-4 flex justify-end">
+                      <Button onClick={handleSubmit} disabled={submitting || !canManage}>
+                        <Save className="w-4 h-4 mr-2" /> {submitting ? 'Menyimpan…' : 'Simpan Laporan'}
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Ringkasan Sidebar */}
+              <Card className="glass-card h-fit">
+                <CardContent className="p-0">
+                  <div className="px-5 py-3 border-b border-border bg-muted/30">
+                    <h3 className="text-xs font-semibold tracking-wider uppercase text-muted-foreground">
+                      Ringkasan Laporan Harian
+                    </h3>
+                  </div>
+                  <div className="divide-y divide-border">
+                    <SummaryRow label="Cash on Hand Awal" value={formatRp(cashStart)} />
+                    <SummaryRow label="Tambahan Cash on Hand" value={formatRp(cashAdded)} />
+                    <SummaryRow label="Total Belanja (Cash on Hand)" value={formatRp(totalCash)} />
+                    <SummaryRow label="Total Pengeluaran" value={formatRp(totalExpense)} highlight />
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+
+          {/* REKAP TAB */}
           <TabsContent value="recap" className="mt-4">
+            <div className="flex gap-2 flex-wrap border-b border-border pb-3 mb-4">
+              {outlets.map((o) => (
+                <button
+                  key={o.id}
+                  type="button"
+                  onClick={() => setActiveOutlet(o.id)}
+                  className={cn(
+                    'px-4 py-2 rounded-md text-sm font-medium border transition-colors',
+                    activeOutlet === o.id
+                      ? 'bg-primary text-primary-foreground border-primary'
+                      : 'bg-background text-foreground border-border hover:bg-muted'
+                  )}
+                >
+                  {o.name}
+                </button>
+              ))}
+            </div>
+
             <Card className="glass-card">
               <CardContent className="p-0">
                 <div className="overflow-x-auto">
@@ -180,41 +390,30 @@ export default function DailyRecapPage() {
                     <thead>
                       <tr className="border-b border-border text-left text-muted-foreground">
                         <th className="p-3 font-medium">Tanggal</th>
-                        <th className="p-3 font-medium">Cabang</th>
                         <th className="p-3 font-medium">Pelapor</th>
-                        <th className="p-3 font-medium">Kas Awal</th>
-                        <th className="p-3 font-medium">Offline</th>
-                        <th className="p-3 font-medium">Online</th>
-                        <th className="p-3 font-medium">Kas Fisik</th>
-                        <th className="p-3 font-medium">QRIS</th>
-                        <th className="p-3 font-medium">Pengeluaran</th>
-                        <th className="p-3 font-medium">Selisih</th>
-                        {canManage && <th className="p-3 font-medium" />}
+                        <th className="p-3 font-medium">Cash Awal</th>
+                        <th className="p-3 font-medium">Tambahan</th>
+                        <th className="p-3 font-medium">Cash</th>
+                        <th className="p-3 font-medium">Transfer</th>
+                        <th className="p-3 font-medium">Total Pengeluaran</th>
+                        {role === 'admin' && <th className="p-3 font-medium" />}
                       </tr>
                     </thead>
                     <tbody>
-                      {reports.map((r) => {
-                        const totalIncome = (r.daily_offline_income || 0) + (r.online_delivery_sales || 0);
-                        const totalCash = (r.ending_physical_cash || 0) + (r.ending_qris_cash || 0);
-                        const expected = (r.starting_cash || 0) + totalIncome - (r.total_expense || 0);
-                        const diff = totalCash - expected;
+                      {reports.map((r: any) => {
+                        const items = (r.finance_expense_items || []) as any[];
+                        const tCash = items.filter((i) => i.payment_type === 'cash').reduce((s, i) => s + Number(i.subtotal || 0), 0);
+                        const tTransfer = items.filter((i) => i.payment_type === 'transfer').reduce((s, i) => s + Number(i.subtotal || 0), 0);
                         return (
                           <tr key={r.id} className="border-b border-border/50 hover:bg-muted/30">
                             <td className="p-3">{r.report_date}</td>
-                            <td className="p-3">{outletMap.get(r.outlet_id || '') || '-'}</td>
-                            <td className="p-3">{r.reporter_name || profileMap.get(r.user_id) || '-'}</td>
+                            <td className="p-3">{r.reporter_name || '-'}</td>
                             <td className="p-3">{formatRp(r.starting_cash || 0)}</td>
-                            <td className="p-3">{formatRp(r.daily_offline_income || 0)}</td>
-                            <td className="p-3">{formatRp(r.online_delivery_sales || 0)}</td>
-                            <td className="p-3">{formatRp(r.ending_physical_cash || 0)}</td>
-                            <td className="p-3">{formatRp(r.ending_qris_cash || 0)}</td>
-                            <td className="p-3">{formatRp(r.total_expense || 0)}</td>
-                            <td className="p-3">
-                              <Badge variant={diff === 0 ? 'default' : diff > 0 ? 'secondary' : 'destructive'}>
-                                {diff >= 0 ? '+' : ''}{formatRp(diff)}
-                              </Badge>
-                            </td>
-                            {canManage && (
+                            <td className="p-3">{formatRp(r.cash_on_hand_added || 0)}</td>
+                            <td className="p-3">{formatRp(tCash)}</td>
+                            <td className="p-3">{formatRp(tTransfer)}</td>
+                            <td className="p-3"><Badge variant="secondary">{formatRp(tCash + tTransfer)}</Badge></td>
+                            {role === 'admin' && (
                               <td className="p-3">
                                 <Button size="icon" variant="ghost" onClick={() => handleDelete(r.id)}>
                                   <Trash2 className="w-4 h-4 text-destructive" />
@@ -225,7 +424,11 @@ export default function DailyRecapPage() {
                         );
                       })}
                       {reports.length === 0 && (
-                        <tr><td colSpan={canManage ? 11 : 10} className="p-8 text-center text-muted-foreground">Belum ada laporan finance.</td></tr>
+                        <tr>
+                          <td colSpan={role === 'admin' ? 8 : 7} className="p-8 text-center text-muted-foreground">
+                            Belum ada laporan untuk cabang ini.
+                          </td>
+                        </tr>
                       )}
                     </tbody>
                   </table>
@@ -233,73 +436,17 @@ export default function DailyRecapPage() {
               </CardContent>
             </Card>
           </TabsContent>
-
-          {canManage && (
-            <TabsContent value="input" className="mt-4">
-              <Card className="glass-card">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Plus className="w-5 h-5" /> Input Laporan Harian Finance
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <Label>Tanggal</Label>
-                      <Input type="date" value={form.report_date} onChange={(e) => setForm({ ...form, report_date: e.target.value })} required />
-                    </div>
-                    <div>
-                      <Label>Nama Pelapor</Label>
-                      <Input value={form.reporter_name} onChange={(e) => setForm({ ...form, reporter_name: e.target.value })} />
-                    </div>
-                    <div>
-                      <Label>Kas Awal</Label>
-                      <Input type="number" value={form.starting_cash} onChange={(e) => setForm({ ...form, starting_cash: Number(e.target.value) })} />
-                    </div>
-                    <div>
-                      <Label>Pemasukan Offline (Dine-in)</Label>
-                      <Input type="number" value={form.daily_offline_income} onChange={(e) => setForm({ ...form, daily_offline_income: Number(e.target.value) })} />
-                    </div>
-                    <div>
-                      <Label>ShopeeFood</Label>
-                      <Input type="number" value={form.shopeefood_sales} onChange={(e) => setForm({ ...form, shopeefood_sales: Number(e.target.value) })} />
-                    </div>
-                    <div>
-                      <Label>GoFood</Label>
-                      <Input type="number" value={form.gofood_sales} onChange={(e) => setForm({ ...form, gofood_sales: Number(e.target.value) })} />
-                    </div>
-                    <div>
-                      <Label>GrabFood</Label>
-                      <Input type="number" value={form.grabfood_sales} onChange={(e) => setForm({ ...form, grabfood_sales: Number(e.target.value) })} />
-                    </div>
-                    <div>
-                      <Label>Total Pengeluaran</Label>
-                      <Input type="number" value={form.total_expense} onChange={(e) => setForm({ ...form, total_expense: Number(e.target.value) })} />
-                    </div>
-                    <div>
-                      <Label>Kas Fisik Akhir</Label>
-                      <Input type="number" value={form.ending_physical_cash} onChange={(e) => setForm({ ...form, ending_physical_cash: Number(e.target.value) })} />
-                    </div>
-                    <div>
-                      <Label>QRIS Akhir</Label>
-                      <Input type="number" value={form.ending_qris_cash} onChange={(e) => setForm({ ...form, ending_qris_cash: Number(e.target.value) })} />
-                    </div>
-                    <div className="md:col-span-2">
-                      <Label>Catatan</Label>
-                      <Textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
-                    </div>
-                    <div className="md:col-span-2">
-                      <Button type="submit" disabled={submitting} className="w-full md:w-auto">
-                        <Save className="w-4 h-4 mr-2" /> {submitting ? 'Menyimpan...' : 'Simpan Laporan'}
-                      </Button>
-                    </div>
-                  </form>
-                </CardContent>
-              </Card>
-            </TabsContent>
-          )}
         </Tabs>
       </div>
     </AppLayout>
+  );
+}
+
+function SummaryRow({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
+  return (
+    <div className={cn('flex items-center justify-between px-5 py-3', highlight && 'bg-muted/60')}>
+      <span className={cn('text-sm', highlight ? 'font-semibold' : 'text-muted-foreground')}>{label}</span>
+      <span className="text-sm font-semibold">{value}</span>
+    </div>
   );
 }
