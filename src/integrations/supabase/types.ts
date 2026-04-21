@@ -645,8 +645,12 @@ export type Database = {
           created_by: string
           id: string
           invoice_date: string
+          invoice_number: string | null
           notes: string | null
           outlet_id: string | null
+          paid_at: string | null
+          recipient: string | null
+          status: string
           total: number
           updated_at: string
         }
@@ -655,8 +659,12 @@ export type Database = {
           created_by: string
           id?: string
           invoice_date?: string
+          invoice_number?: string | null
           notes?: string | null
           outlet_id?: string | null
+          paid_at?: string | null
+          recipient?: string | null
+          status?: string
           total?: number
           updated_at?: string
         }
@@ -665,8 +673,12 @@ export type Database = {
           created_by?: string
           id?: string
           invoice_date?: string
+          invoice_number?: string | null
           notes?: string | null
           outlet_id?: string | null
+          paid_at?: string | null
+          recipient?: string | null
+          status?: string
           total?: number
           updated_at?: string
         }
