@@ -85,7 +85,9 @@ export default function InvoicePage() {
   const [catName, setCatName] = useState('');
   const [catUnit, setCatUnit] = useState('kg');
   const [catPrice, setCatPrice] = useState<number>(0);
+  const [catQty, setCatQty] = useState<number>(1);
   const [editingCat, setEditingCat] = useState<string | null>(null);
+  const [catDialogOpen, setCatDialogOpen] = useState(false);
 
   const fetchCatalog = async () => {
     const { data } = await supabase.from('item_catalog').select('*').order('name');
