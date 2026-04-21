@@ -388,59 +388,41 @@ export type Database = {
       }
       finance_daily_reports: {
         Row: {
+          cash_on_hand_added: number | null
           created_at: string
-          daily_offline_income: number | null
-          ending_physical_cash: number | null
-          ending_qris_cash: number | null
-          gofood_sales: number | null
-          grabfood_sales: number | null
+          extra_fields: Json | null
           id: string
           notes: string | null
-          online_delivery_sales: number | null
           outlet_id: string | null
           report_date: string
           reporter_name: string | null
-          shopeefood_sales: number | null
           starting_cash: number | null
-          total_expense: number | null
           updated_at: string
           user_id: string
         }
         Insert: {
+          cash_on_hand_added?: number | null
           created_at?: string
-          daily_offline_income?: number | null
-          ending_physical_cash?: number | null
-          ending_qris_cash?: number | null
-          gofood_sales?: number | null
-          grabfood_sales?: number | null
+          extra_fields?: Json | null
           id?: string
           notes?: string | null
-          online_delivery_sales?: number | null
           outlet_id?: string | null
           report_date?: string
           reporter_name?: string | null
-          shopeefood_sales?: number | null
           starting_cash?: number | null
-          total_expense?: number | null
           updated_at?: string
           user_id: string
         }
         Update: {
+          cash_on_hand_added?: number | null
           created_at?: string
-          daily_offline_income?: number | null
-          ending_physical_cash?: number | null
-          ending_qris_cash?: number | null
-          gofood_sales?: number | null
-          grabfood_sales?: number | null
+          extra_fields?: Json | null
           id?: string
           notes?: string | null
-          online_delivery_sales?: number | null
           outlet_id?: string | null
           report_date?: string
           reporter_name?: string | null
-          shopeefood_sales?: number | null
           starting_cash?: number | null
-          total_expense?: number | null
           updated_at?: string
           user_id?: string
         }
@@ -450,6 +432,47 @@ export type Database = {
             columns: ["outlet_id"]
             isOneToOne: false
             referencedRelation: "outlets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      finance_expense_items: {
+        Row: {
+          created_at: string
+          id: string
+          item_name: string
+          payment_type: string
+          qty: number
+          report_id: string
+          subtotal: number
+          unit_price: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          item_name?: string
+          payment_type?: string
+          qty?: number
+          report_id: string
+          subtotal?: number
+          unit_price?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          item_name?: string
+          payment_type?: string
+          qty?: number
+          report_id?: string
+          subtotal?: number
+          unit_price?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_expense_items_report_id_fkey"
+            columns: ["report_id"]
+            isOneToOne: false
+            referencedRelation: "finance_daily_reports"
             referencedColumns: ["id"]
           },
         ]
