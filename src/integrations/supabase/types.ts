@@ -758,6 +758,53 @@ export type Database = {
         }
         Relationships: []
       }
+      note_archives: {
+        Row: {
+          amount: number
+          created_at: string
+          file_url: string
+          id: string
+          note_date: string
+          note_name: string
+          outlet_id: string | null
+          storage_path: string
+          updated_at: string
+          uploaded_by: string
+        }
+        Insert: {
+          amount?: number
+          created_at?: string
+          file_url: string
+          id?: string
+          note_date?: string
+          note_name?: string
+          outlet_id?: string | null
+          storage_path: string
+          updated_at?: string
+          uploaded_by: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          file_url?: string
+          id?: string
+          note_date?: string
+          note_name?: string
+          outlet_id?: string | null
+          storage_path?: string
+          updated_at?: string
+          uploaded_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "note_archives_outlet_id_fkey"
+            columns: ["outlet_id"]
+            isOneToOne: false
+            referencedRelation: "outlets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       outlet_finance_configs: {
         Row: {
           created_at: string

@@ -18,6 +18,7 @@ import {
   ShieldCheck,
   Activity,
   Camera,
+  Image as ImageIcon,
   Settings as SettingsIcon,
 } from 'lucide-react';
 import type { AppRole } from '@/hooks/useAuth';
@@ -70,6 +71,7 @@ export const MENU_GROUPS: MenuGroupDef[] = [
       { key: 'finance.daily', to: '/finance/daily-recap', icon: FileText, label: 'Laporan Harian Finance', defaultRoles: ['admin', 'management', 'pic'] },
       { key: 'finance.profit_loss', to: '/finance/profit-loss', icon: TrendingUp, label: 'Laporan Laba Rugi', defaultRoles: ['admin', 'management', 'pic'] },
       { key: 'finance.invoice', to: '/finance/invoice', icon: FileText, label: 'Invoice', defaultRoles: ['admin', 'management', 'pic'] },
+      { key: 'finance.note_archive', to: '/finance/note-archive', icon: ImageIcon, label: 'Galeri Arsip Nota', defaultRoles: ['admin', 'management', 'pic'] },
     ],
   },
   {
