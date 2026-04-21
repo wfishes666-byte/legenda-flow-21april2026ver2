@@ -746,6 +746,7 @@ export type Database = {
           id: string
           income_fields: Json
           outlet_id: string
+          pair_groups: Json
           selisih_formula: string
           summary_groups: Json
           updated_at: string
@@ -755,6 +756,7 @@ export type Database = {
           id?: string
           income_fields?: Json
           outlet_id: string
+          pair_groups?: Json
           selisih_formula?: string
           summary_groups?: Json
           updated_at?: string
@@ -764,6 +766,7 @@ export type Database = {
           id?: string
           income_fields?: Json
           outlet_id?: string
+          pair_groups?: Json
           selisih_formula?: string
           summary_groups?: Json
           updated_at?: string
