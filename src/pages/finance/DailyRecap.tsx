@@ -290,7 +290,47 @@ export default function DailyRecapPage() {
                     </div>
                   )}
 
-                  {/* Pengeluaran */}
+                  {/* Dynamic pair groups (parallel columns: e.g. Penjualan vs Pendapatan Online) */}
+                  {(activeConfig.pair_groups || []).map((pg) => {
+                    const leftTotal = pg.platforms.reduce(
+                      (s, p) => s + (incomeValues[`${pg.left_prefix}_${p.key}`] || 0), 0,
+                    );
+                    const rightTotal = pg.platforms.reduce(
+                      (s, p) => s + (incomeValues[`${pg.right_prefix}_${p.key}`] || 0), 0,
+                    );
+                    return (
+                      <div key={pg.key} className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {([
+                          { label: pg.left_label, prefix: pg.left_prefix, total: leftTotal },
+                          { label: pg.right_label, prefix: pg.right_prefix, total: rightTotal },
+                        ]).map((col) => (
+                          <div key={col.prefix} className="space-y-3">
+                            <h4 className="font-semibold text-sm">{col.label}</h4>
+                            {pg.platforms.map((p) => {
+                              const k = `${col.prefix}_${p.key}`;
+                              return (
+                                <div key={k}>
+                                  <Label className="text-xs text-muted-foreground">{p.label}</Label>
+                                  <Input
+                                    type="number"
+                                    value={incomeValues[k] || ''}
+                                    onChange={(e) =>
+                                      setIncomeValues((prev) => ({ ...prev, [k]: Number(e.target.value) }))
+                                    }
+                                    placeholder="Rp 0"
+                                  />
+                                </div>
+                              );
+                            })}
+                            <div className="bg-muted/40 border border-border rounded-md px-3 py-2 text-sm">
+                              Total: <span className="font-semibold">{formatRp(col.total)}</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  })}
+
                   <div>
                     <div className="flex items-center justify-between mb-3">
                       <h3 className="font-semibold">Pengeluaran</h3>
