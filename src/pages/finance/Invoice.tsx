@@ -266,24 +266,47 @@ export default function InvoicePage() {
   };
 
   // ====== Ringkasan ======
+  type OutletSummary = {
+    outlet: string;
+    invoiceCount: number;
+    total: number;
+    paid: number;
+    unpaid: number;
+    unpaidCount: number;
+  };
   const summary = useMemo(() => {
-    const perOutlet: Record<string, number> = {};
-    const perItem: Record<string, { qty: number; total: number; unit: string }> = {};
-    invoices.forEach((inv) => {
-      perOutlet[inv.outlet_name || '—'] = (perOutlet[inv.outlet_name || '—'] || 0) + Number(inv.total || 0);
-      (inv.items || []).forEach((it) => {
-        const key = it.item_name;
-        if (!perItem[key]) perItem[key] = { qty: 0, total: 0, unit: it.unit };
-        perItem[key].qty += Number(it.qty || 0);
-        perItem[key].total += Number(it.total || 0);
-      });
+    // Filter by month
+    const filtered = invoices.filter((inv) => {
+      if (!filterMonth) return true;
+      return (inv.invoice_date || '').startsWith(filterMonth);
     });
-    return {
-      perOutlet: Object.entries(perOutlet).sort((a, b) => b[1] - a[1]),
-      perItem: Object.entries(perItem).sort((a, b) => b[1].total - a[1].total),
-      grand: Object.values(perOutlet).reduce((s, v) => s + v, 0),
-    };
-  }, [invoices]);
+    const map: Record<string, OutletSummary> = {};
+    filtered.forEach((inv) => {
+      const name = inv.outlet_name || '—';
+      if (!map[name]) {
+        map[name] = { outlet: name, invoiceCount: 0, total: 0, paid: 0, unpaid: 0, unpaidCount: 0 };
+      }
+      const row = map[name];
+      const amt = Number(inv.total || 0);
+      row.invoiceCount += 1;
+      row.total += amt;
+      if (inv.status === 'paid') row.paid += amt;
+      else { row.unpaid += amt; row.unpaidCount += 1; }
+    });
+    const rows = Object.values(map).sort((a, b) => b.total - a.total);
+    const totals = rows.reduce(
+      (acc, r) => {
+        acc.invoiceCount += r.invoiceCount;
+        acc.total += r.total;
+        acc.paid += r.paid;
+        acc.unpaid += r.unpaid;
+        acc.unpaidCount += r.unpaidCount;
+        return acc;
+      },
+      { invoiceCount: 0, total: 0, paid: 0, unpaid: 0, unpaidCount: 0 },
+    );
+    return { rows, totals };
+  }, [invoices, filterMonth]);
 
   return (
     <AppLayout>
