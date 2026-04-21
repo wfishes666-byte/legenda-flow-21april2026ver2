@@ -186,12 +186,18 @@ export default function ProfitLossPage() {
     }
   };
 
-  // Aggregations for LR tab — only expenses for selected outlet
-  const lrExpenseRows = useMemo(
-    () => reportGroups.filter((g) => !selectedOutlet || g.outlet_id === selectedOutlet).flatMap((g) => g.expenses),
-    [reportGroups, selectedOutlet],
+  // L/R tab uses its own outlet chip filter (independent from the L/R Card balancing)
+  const [lrOutletFilter, setLrOutletFilter] = useState<string>('all');
+
+  // Aggregations for LR tab — filtered by chip ('all' = all outlets)
+  const lrGroups = useMemo(
+    () => reportGroups.filter((g) => lrOutletFilter === 'all' || g.outlet_id === lrOutletFilter),
+    [reportGroups, lrOutletFilter],
   );
-  const totalIncome = incomeData.offline + incomeData.online;
+  const lrExpenseRows = useMemo(() => lrGroups.flatMap((g) => g.expenses), [lrGroups]);
+  const lrTotalIncome = useMemo(() => lrGroups.reduce((s, g) => s + g.income, 0), [lrGroups]);
+
+  const totalIncome = lrTotalIncome;
   const expensesByCategory: Record<string, number> = {};
   let totalExpenses = 0;
   lrExpenseRows.forEach((row) => {
