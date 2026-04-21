@@ -748,6 +748,7 @@ export type Database = {
           outlet_id: string
           pair_groups: Json
           selisih_formula: string
+          selisih_inline_label: string
           summary_groups: Json
           updated_at: string
         }
@@ -758,6 +759,7 @@ export type Database = {
           outlet_id: string
           pair_groups?: Json
           selisih_formula?: string
+          selisih_inline_label?: string
           summary_groups?: Json
           updated_at?: string
         }
@@ -768,6 +770,7 @@ export type Database = {
           outlet_id?: string
           pair_groups?: Json
           selisih_formula?: string
+          selisih_inline_label?: string
           summary_groups?: Json
           updated_at?: string
         }
