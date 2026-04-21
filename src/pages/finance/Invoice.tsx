@@ -44,6 +44,10 @@ interface InvoiceRow {
   invoice_date: string;
   total: number;
   notes: string | null;
+  invoice_number: string | null;
+  recipient: string | null;
+  status: string;
+  paid_at: string | null;
   outlet_name?: string;
   items?: { item_name: string; unit: string; qty: number; unit_price: number; total: number }[];
 }
