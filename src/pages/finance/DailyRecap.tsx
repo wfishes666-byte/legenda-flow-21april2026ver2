@@ -95,8 +95,14 @@ export default function DailyRecapPage() {
   useEffect(() => {
     const init: Record<string, number> = {};
     activeConfig.income_fields.forEach((f) => { init[f.key] = 0; });
+    (activeConfig.pair_groups || []).forEach((pg) => {
+      pg.platforms.forEach((p) => {
+        init[`${pg.left_prefix}_${p.key}`] = 0;
+        init[`${pg.right_prefix}_${p.key}`] = 0;
+      });
+    });
     setIncomeValues(init);
-  }, [activeOutlet, activeConfig.income_fields.length]);
+  }, [activeOutlet, activeConfig.income_fields.length, activeConfig.pair_groups?.length]);
 
   const fetchReports = async () => {
     if (!activeOutlet) return;
