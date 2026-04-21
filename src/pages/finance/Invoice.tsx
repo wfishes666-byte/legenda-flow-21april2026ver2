@@ -483,7 +483,7 @@ export default function InvoicePage() {
                               const isOpen = expandedInv === inv.id;
                               const isPaid = inv.status === 'paid';
                               return (
-                                <>
+                                <React.Fragment key={inv.id}>
                                   <TableRow
                                     key={inv.id}
                                     className="cursor-pointer"
