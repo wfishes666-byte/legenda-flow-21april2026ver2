@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useOutlets } from '@/hooks/useOutlets';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
@@ -237,204 +238,213 @@ export default function NoteArchivePage() {
           <p className="text-sm text-muted-foreground mt-1">Foto dan simpan nota pembelian harian per outlet</p>
         </div>
 
-        {/* Upload card */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-xs font-semibold tracking-widest uppercase text-foreground">
-              Upload Nota
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
-              <div className="flex-1 space-y-2">
-                <Label className="text-sm font-semibold">Outlet</Label>
-                <div className="flex flex-wrap gap-2">
-                  {outletsLoading ? (
-                    <span className="text-sm text-muted-foreground">Memuat outlet...</span>
-                  ) : (
-                    outlets.map((o) => (
-                      <button
-                        key={o.id}
-                        type="button"
-                        onClick={() => setUploadOutletId(o.id)}
-                        className={cn(
-                          'px-4 py-2 rounded-md border text-sm font-medium transition-colors',
-                          uploadOutletId === o.id
-                            ? 'bg-foreground text-background border-foreground'
-                            : 'bg-background text-foreground border-border hover:bg-muted'
-                        )}
-                      >
-                        {o.name}
-                      </button>
-                    ))
-                  )}
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label className="text-sm font-semibold">Tanggal</Label>
-                <Input
-                  type="date"
-                  value={uploadDate}
-                  onChange={(e) => setUploadDate(e.target.value)}
-                  className="w-44"
-                />
-              </div>
-            </div>
+        <Tabs defaultValue="upload" className="space-y-6">
+          <TabsList>
+            <TabsTrigger value="upload">Upload Nota</TabsTrigger>
+            <TabsTrigger value="gallery">Galeri Nota</TabsTrigger>
+          </TabsList>
 
-            {/* Dropzone */}
-            <div
-              ref={dropRef}
-              className="border-2 border-dashed border-border rounded-lg bg-muted/30 px-6 py-12 flex flex-col items-center justify-center gap-3 transition-colors"
-            >
-              <Paperclip className="w-7 h-7 text-foreground" />
-              <p className="text-sm text-foreground">Seret foto ke sini, atau pilih:</p>
-              <div className="flex gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="font-semibold"
-                >
-                  Pilih File
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => cameraInputRef.current?.click()}
-                  className="font-semibold gap-2"
-                >
-                  <Camera className="w-4 h-4" />
-                  Kamera
-                </Button>
-              </div>
-              <p className="text-xs text-muted-foreground">JPG, PNG, WEBP · Boleh pilih banyak</p>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                multiple
-                className="hidden"
-                onChange={(e) => {
-                  handleFiles(e.target.files);
-                  if (fileInputRef.current) fileInputRef.current.value = '';
-                }}
-              />
-              <input
-                ref={cameraInputRef}
-                type="file"
-                accept="image/*"
-                capture="environment"
-                multiple
-                className="hidden"
-                onChange={(e) => {
-                  handleFiles(e.target.files);
-                  if (cameraInputRef.current) cameraInputRef.current.value = '';
-                }}
-              />
-            </div>
-
-            <div className="flex justify-end">
-              <Button
-                type="button"
-                disabled={pending.length === 0}
-                onClick={() => setMetaDialogOpen(true)}
-              >
-                {pending.length > 0 ? `Isi Detail (${pending.length})` : 'Simpan'}
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Stored archives */}
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-          <h2 className="text-lg font-bold">Arsip Tersimpan</h2>
-          <div className="flex gap-2 items-center">
-            <Select value={filterOutlet} onValueChange={setFilterOutlet}>
-              <SelectTrigger className="w-44 h-9">
-                <SelectValue placeholder="Semua Outlet" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Semua Outlet</SelectItem>
-                {outlets.map((o) => (
-                  <SelectItem key={o.id} value={o.id}>{o.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Input
-              type="date"
-              value={filterDate}
-              onChange={(e) => setFilterDate(e.target.value)}
-              className="w-40 h-9"
-            />
-            {filterDate && (
-              <Button variant="ghost" size="sm" onClick={() => setFilterDate('')}>Reset</Button>
-            )}
-          </div>
-        </div>
-
-        <Card>
-          <CardContent className="p-6">
-            {loading ? (
-              <p className="text-center text-muted-foreground py-12">Memuat arsip...</p>
-            ) : grouped.length === 0 ? (
-              <p className="text-center text-muted-foreground py-12">Belum ada arsip nota yang tersimpan.</p>
-            ) : (
-              <div className="space-y-8">
-                {grouped.map((g) => (
-                  <div key={`${g.outletId}-${g.date}`} className="space-y-3">
-                    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 border-b border-border pb-2">
-                      <div className="flex items-center gap-2">
-                        <CalendarIcon className="w-4 h-4 text-muted-foreground" />
-                        <span className="font-semibold text-foreground">{g.outletName}</span>
-                        <span className="text-muted-foreground">·</span>
-                        <span className="text-sm text-muted-foreground">{formatDateLong(g.date)}</span>
-                      </div>
-                      <div className="text-sm">
-                        <span className="text-muted-foreground">{g.items.length} nota · Total: </span>
-                        <span className="font-semibold text-foreground">{formatRupiah(g.total)}</span>
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-                      {g.items.map((it) => {
-                        const title = `${it.note_name} - ${formatDateDDMMYY(it.note_date)} - ${formatRupiah(it.amount)}`;
-                        return (
-                          <div key={it.id} className="group relative rounded-lg border border-border overflow-hidden bg-card">
-                            <button
-                              type="button"
-                              className="block w-full aspect-square bg-muted overflow-hidden"
-                              onClick={() => setPreviewUrl(it.file_url)}
-                              title={title}
-                            >
-                              <img
-                                src={it.file_url}
-                                alt={title}
-                                loading="lazy"
-                                className="w-full h-full object-cover transition-transform group-hover:scale-105"
-                              />
-                            </button>
-                            <div className="p-2 space-y-0.5">
-                              <p className="text-xs font-semibold text-foreground line-clamp-2" title={title}>
-                                {title}
-                              </p>
-                            </div>
-                            <button
-                              type="button"
-                              onClick={() => handleDelete(it)}
-                              className="absolute top-1.5 right-1.5 p-1.5 rounded-md bg-background/80 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:bg-background"
-                              aria-label="Hapus"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                        );
-                      })}
+          <TabsContent value="upload" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-xs font-semibold tracking-widest uppercase text-foreground">
+                  Upload Nota
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
+                  <div className="flex-1 space-y-2">
+                    <Label className="text-sm font-semibold">Outlet</Label>
+                    <div className="flex flex-wrap gap-2">
+                      {outletsLoading ? (
+                        <span className="text-sm text-muted-foreground">Memuat outlet...</span>
+                      ) : (
+                        outlets.map((o) => (
+                          <button
+                            key={o.id}
+                            type="button"
+                            onClick={() => setUploadOutletId(o.id)}
+                            className={cn(
+                              'px-4 py-2 rounded-md border text-sm font-medium transition-colors',
+                              uploadOutletId === o.id
+                                ? 'bg-foreground text-background border-foreground'
+                                : 'bg-background text-foreground border-border hover:bg-muted'
+                            )}
+                          >
+                            {o.name}
+                          </button>
+                        ))
+                      )}
                     </div>
                   </div>
-                ))}
+                  <div className="space-y-2">
+                    <Label className="text-sm font-semibold">Tanggal</Label>
+                    <Input
+                      type="date"
+                      value={uploadDate}
+                      onChange={(e) => setUploadDate(e.target.value)}
+                      className="w-44"
+                    />
+                  </div>
+                </div>
+
+                {/* Dropzone */}
+                <div
+                  ref={dropRef}
+                  className="border-2 border-dashed border-border rounded-lg bg-muted/30 px-6 py-12 flex flex-col items-center justify-center gap-3 transition-colors"
+                >
+                  <Paperclip className="w-7 h-7 text-foreground" />
+                  <p className="text-sm text-foreground">Seret foto ke sini, atau pilih:</p>
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="font-semibold"
+                    >
+                      Pilih File
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => cameraInputRef.current?.click()}
+                      className="font-semibold gap-2"
+                    >
+                      <Camera className="w-4 h-4" />
+                      Kamera
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">JPG, PNG, WEBP · Boleh pilih banyak</p>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    className="hidden"
+                    onChange={(e) => {
+                      handleFiles(e.target.files);
+                      if (fileInputRef.current) fileInputRef.current.value = '';
+                    }}
+                  />
+                  <input
+                    ref={cameraInputRef}
+                    type="file"
+                    accept="image/*"
+                    capture="environment"
+                    multiple
+                    className="hidden"
+                    onChange={(e) => {
+                      handleFiles(e.target.files);
+                      if (cameraInputRef.current) cameraInputRef.current.value = '';
+                    }}
+                  />
+                </div>
+
+                <div className="flex justify-end">
+                  <Button
+                    type="button"
+                    disabled={pending.length === 0}
+                    onClick={() => setMetaDialogOpen(true)}
+                  >
+                    {pending.length > 0 ? `Isi Detail (${pending.length})` : 'Simpan'}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="gallery" className="space-y-6">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+              <h2 className="text-lg font-bold">Arsip Tersimpan</h2>
+              <div className="flex gap-2 items-center">
+                <Select value={filterOutlet} onValueChange={setFilterOutlet}>
+                  <SelectTrigger className="w-44 h-9">
+                    <SelectValue placeholder="Semua Outlet" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Semua Outlet</SelectItem>
+                    {outlets.map((o) => (
+                      <SelectItem key={o.id} value={o.id}>{o.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Input
+                  type="date"
+                  value={filterDate}
+                  onChange={(e) => setFilterDate(e.target.value)}
+                  className="w-40 h-9"
+                />
+                {filterDate && (
+                  <Button variant="ghost" size="sm" onClick={() => setFilterDate('')}>Reset</Button>
+                )}
               </div>
-            )}
-          </CardContent>
-        </Card>
+            </div>
+
+            <Card>
+              <CardContent className="p-6">
+                {loading ? (
+                  <p className="text-center text-muted-foreground py-12">Memuat arsip...</p>
+                ) : grouped.length === 0 ? (
+                  <p className="text-center text-muted-foreground py-12">Belum ada arsip nota yang tersimpan.</p>
+                ) : (
+                  <div className="space-y-8">
+                    {grouped.map((g) => (
+                      <div key={`${g.outletId}-${g.date}`} className="space-y-3">
+                        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 border-b border-border pb-2">
+                          <div className="flex items-center gap-2">
+                            <CalendarIcon className="w-4 h-4 text-muted-foreground" />
+                            <span className="font-semibold text-foreground">{g.outletName}</span>
+                            <span className="text-muted-foreground">·</span>
+                            <span className="text-sm text-muted-foreground">{formatDateLong(g.date)}</span>
+                          </div>
+                          <div className="text-sm">
+                            <span className="text-muted-foreground">{g.items.length} nota · Total: </span>
+                            <span className="font-semibold text-foreground">{formatRupiah(g.total)}</span>
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+                          {g.items.map((it) => {
+                            const title = `${it.note_name} - ${formatDateDDMMYY(it.note_date)} - ${formatRupiah(it.amount)}`;
+                            return (
+                              <div key={it.id} className="group relative rounded-lg border border-border overflow-hidden bg-card">
+                                <button
+                                  type="button"
+                                  className="block w-full aspect-square bg-muted overflow-hidden"
+                                  onClick={() => setPreviewUrl(it.file_url)}
+                                  title={title}
+                                >
+                                  <img
+                                    src={it.file_url}
+                                    alt={title}
+                                    loading="lazy"
+                                    className="w-full h-full object-cover transition-transform group-hover:scale-105"
+                                  />
+                                </button>
+                                <div className="p-2 space-y-0.5">
+                                  <p className="text-xs font-semibold text-foreground line-clamp-2" title={title}>
+                                    {title}
+                                  </p>
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => handleDelete(it)}
+                                  className="absolute top-1.5 right-1.5 p-1.5 rounded-md bg-background/80 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:bg-background"
+                                  aria-label="Hapus"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
       </div>
 
       {/* Metadata fill dialog */}
