@@ -1,0 +1,2 @@
+ALTER TABLE public.item_catalog
+  ADD COLUMN IF NOT EXISTS default_qty NUMERIC NOT NULL DEFAULT 1;
