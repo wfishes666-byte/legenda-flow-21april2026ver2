@@ -92,12 +92,11 @@ export default function InvoicePage() {
   };
 
   const fetchInvoices = async () => {
-    const start = `${filterMonth}-01`;
-    const endDate = new Date(start);
-    endDate.setMonth(endDate.getMonth() + 1);
-    endDate.setDate(0);
-    const end = format(endDate, 'yyyy-MM-dd');
-    let q = supabase.from('invoices').select('*').gte('invoice_date', start).lte('invoice_date', end).order('invoice_date', { ascending: false });
+    let q = supabase
+      .from('invoices')
+      .select('*')
+      .order('invoice_date', { ascending: false })
+      .order('created_at', { ascending: false });
     if (filterOutlet !== 'all') q = q.eq('outlet_id', filterOutlet);
     const { data } = await q;
     const rows = (data as any[]) || [];
@@ -117,7 +116,7 @@ export default function InvoicePage() {
 
   useEffect(() => { fetchCatalog(); }, []);
   useEffect(() => { if (outlets.length && !outletId) setOutletId(outlets[0].id); }, [outlets, outletId]);
-  useEffect(() => { fetchInvoices(); }, [filterOutlet, filterMonth, outlets]);
+  useEffect(() => { fetchInvoices(); }, [filterOutlet, outlets]);
 
   // ====== Generate handlers ======
   const updateLine = (id: string, patch: Partial<DraftLine>) =>
