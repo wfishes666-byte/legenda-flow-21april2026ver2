@@ -438,6 +438,7 @@ export type Database = {
       }
       finance_expense_items: {
         Row: {
+          category: string | null
           created_at: string
           id: string
           item_name: string
@@ -448,6 +449,7 @@ export type Database = {
           unit_price: number
         }
         Insert: {
+          category?: string | null
           created_at?: string
           id?: string
           item_name?: string
@@ -458,6 +460,7 @@ export type Database = {
           unit_price?: number
         }
         Update: {
+          category?: string | null
           created_at?: string
           id?: string
           item_name?: string

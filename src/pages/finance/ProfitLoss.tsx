@@ -69,34 +69,45 @@ export default function ProfitLossPage() {
     setCategories((data as PLCategory[]) || []);
   };
 
+  // Sum all numeric values from extra_fields jsonb (income fields stored per finance daily report)
+  const sumIncome = (r: any): number => {
+    let sum = (r.starting_cash || 0) + (r.cash_on_hand_added || 0);
+    const extra = (r.extra_fields || {}) as Record<string, any>;
+    Object.values(extra).forEach((v) => {
+      const n = typeof v === 'number' ? v : Number(v);
+      if (Number.isFinite(n)) sum += n;
+    });
+    return sum;
+  };
+
   const fetchData = async () => {
     const startDate = `${month}-01`;
     const endDate = format(endOfMonth(new Date(startDate)), 'yyyy-MM-dd');
 
-    // For Laporan L/R: only selected outlet
-    let lrQuery = supabase
-      .from('financial_reports')
-      .select('id, daily_offline_income, online_delivery_sales')
-      .gte('report_date', startDate)
-      .lte('report_date', endDate);
-    if (selectedOutlet) lrQuery = lrQuery.eq('outlet_id', selectedOutlet);
-    const { data: lrReports } = await lrQuery;
-
-    let offline = 0, online = 0;
-    lrReports?.forEach((r) => {
-      offline += r.daily_offline_income || 0;
-      online += r.online_delivery_sales || 0;
-    });
-    setIncomeData({ offline, online });
-
-    // For Input Akun: ALL outlets in the month
+    // Pull ALL finance daily reports for the month (used for both tabs)
     const { data: allReports } = await supabase
-      .from('financial_reports')
-      .select('id, daily_offline_income, online_delivery_sales, report_date, outlet_id, created_at')
+      .from('finance_daily_reports')
+      .select('id, report_date, outlet_id, created_at, starting_cash, cash_on_hand_added, extra_fields')
       .gte('report_date', startDate)
       .lte('report_date', endDate)
       .order('report_date', { ascending: false })
       .order('created_at', { ascending: false });
+
+    // Income totals for L/R tab — only selected outlet
+    let offline = 0, online = 0;
+    (allReports || [])
+      .filter((r: any) => !selectedOutlet || r.outlet_id === selectedOutlet)
+      .forEach((r: any) => {
+        const extra = (r.extra_fields || {}) as Record<string, any>;
+        Object.entries(extra).forEach(([k, v]) => {
+          const n = typeof v === 'number' ? v : Number(v);
+          if (!Number.isFinite(n)) return;
+          // Heuristic: keys containing "online" go to Online Food bucket, rest to Offline/Dine-in
+          if (/online|grab|gofood|shopee/i.test(k)) online += n;
+          else offline += n;
+        });
+      });
+    setIncomeData({ offline, online });
 
     const outletMap = Object.fromEntries(outlets.map((o) => [o.id, o.name]));
     const groups: ReportGroup[] = (allReports || []).map((r: any) => ({
@@ -105,22 +116,22 @@ export default function ProfitLossPage() {
       outlet_id: r.outlet_id,
       outlet_name: r.outlet_id ? (outletMap[r.outlet_id] || 'Tanpa Outlet') : 'Tanpa Outlet',
       created_at: r.created_at,
-      income: (r.daily_offline_income || 0) + (r.online_delivery_sales || 0),
+      income: sumIncome(r),
       expenses: [],
     }));
 
     const reportIds = groups.map((g) => g.report_id);
     if (reportIds.length > 0) {
       const { data: expenses } = await supabase
-        .from('expense_items')
-        .select('id, description, amount, qty, unit_price, category, report_id')
+        .from('finance_expense_items')
+        .select('id, item_name, subtotal, qty, unit_price, category, report_id, payment_type')
         .in('report_id', reportIds);
       const expByReport: Record<string, ExpenseRow[]> = {};
       (expenses || []).forEach((e: any) => {
         const row: ExpenseRow = {
           id: e.id,
-          description: e.description,
-          amount: e.amount || 0,
+          description: e.item_name + (e.payment_type === 'transfer' ? ' (Transfer)' : ''),
+          amount: e.subtotal || 0,
           qty: e.qty || 1,
           unit_price: e.unit_price || 0,
           category: e.category,
@@ -150,7 +161,7 @@ export default function ProfitLossPage() {
     setSaving(true);
     try {
       for (const [id, category] of entries) {
-        await supabase.from('expense_items').update({ category }).eq('id', id);
+        await supabase.from('finance_expense_items').update({ category }).eq('id', id);
       }
       toast({ title: 'Berhasil disimpan', description: `${entries.length} item diperbarui.` });
       await fetchData();
