@@ -596,6 +596,30 @@ export default function OutletReportRecap({ mode }: Props) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Admin delete confirmation */}
+      <Dialog open={!!deleting} onOpenChange={(o) => !o && !deletingBusy && setDeleting(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Hapus Laporan?</DialogTitle>
+            <DialogDescription>
+              {deleting && (
+                <>
+                  Laporan tanggal <strong>{deleting.report_date}</strong> di{' '}
+                  <strong>{outletMap.get(deleting.outlet_id || '') || 'Tanpa Cabang'}</strong> beserta seluruh
+                  rincian pengeluarannya akan dihapus permanen. Aksi ini tidak bisa dibatalkan.
+                </>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleting(null)} disabled={deletingBusy}>Batal</Button>
+            <Button variant="destructive" onClick={handleDelete} disabled={deletingBusy}>
+              {deletingBusy ? 'Menghapus...' : 'Hapus'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
