@@ -25,6 +25,7 @@ import { format } from 'date-fns';
 import { CsvImportButton } from '@/components/CsvImportButton';
 import { ExportButtons } from '@/components/ExportButtons';
 import { formatRpExport } from '@/lib/exportUtils';
+import { MoneyInput } from '@/components/MoneyInput';
 
 interface CatalogItem {
   id: string;
@@ -126,7 +127,18 @@ export default function InvoicePage() {
 
   // ====== Generate handlers ======
   const updateLine = (id: string, patch: Partial<DraftLine>) =>
-    setLines((prev) => prev.map((l) => (l.id === id ? { ...l, ...patch } : l)));
+    setLines((prev) => {
+      const next = prev.map((l) => (l.id === id ? { ...l, ...patch } : l));
+      // Auto-add baris baru jika baris terakhir mulai diisi
+      const last = next[next.length - 1];
+      if (last && last.id === id) {
+        const hasContent = (patch.item_name?.trim() ?? last.item_name.trim()) !== ''
+          || (patch.unit_price ?? last.unit_price) > 0
+          || (patch.qty ?? last.qty) > 0;
+        if (hasContent) next.push(newLine());
+      }
+      return next;
+    });
   const removeLine = (id: string) =>
     setLines((prev) => prev.length > 1 ? prev.filter((l) => l.id !== id) : prev);
 
@@ -385,8 +397,11 @@ export default function InvoicePage() {
                                   onChange={(e) => updateLine(line.id, { qty: Number(e.target.value) || 0 })} />
                               </TableCell>
                               <TableCell>
-                                <Input className="h-9 text-sm" type="number" min={0} value={line.unit_price || ''}
-                                  onChange={(e) => updateLine(line.id, { unit_price: Number(e.target.value) || 0 })} />
+                                <MoneyInput
+                                  className="h-9 text-sm"
+                                  value={line.unit_price}
+                                  onChange={(v) => updateLine(line.id, { unit_price: v })}
+                                />
                               </TableCell>
                               <TableCell className="text-right font-medium text-sm">{formatRp(total)}</TableCell>
                               <TableCell>

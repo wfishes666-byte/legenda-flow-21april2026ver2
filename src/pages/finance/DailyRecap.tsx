@@ -21,6 +21,7 @@ import {
 } from '@/lib/financeConfig';
 import FinanceStatsRecap from '@/components/finance/FinanceStatsRecap';
 import { useTabParam } from '@/hooks/useTabParam';
+import { MoneyInput } from '@/components/MoneyInput';
 
 type PaymentType = 'cash' | 'transfer';
 
@@ -147,7 +148,18 @@ export default function DailyRecapPage() {
   );
 
   const updateLine = (id: string, patch: Partial<ExpenseLine>) => {
-    setLines((prev) => prev.map((l) => (l.id === id ? { ...l, ...patch } : l)));
+    setLines((prev) => {
+      const next = prev.map((l) => (l.id === id ? { ...l, ...patch } : l));
+      // Auto-add baris baru jika baris terakhir di tab aktif sudah mulai diisi
+      const lastInTab = [...next].reverse().find((l) => l.payment_type === expenseTab);
+      if (lastInTab && lastInTab.id === id) {
+        const hasContent = (patch.item_name?.trim() ?? lastInTab.item_name.trim()) !== ''
+          || (patch.unit_price ?? lastInTab.unit_price) > 0
+          || (patch.qty ?? lastInTab.qty) > 0;
+        if (hasContent) next.push(newLine(expenseTab));
+      }
+      return next;
+    });
   };
   const removeLine = (id: string) => setLines((prev) => prev.filter((l) => l.id !== id));
   const addLine = () => setLines((prev) => [...prev, newLine(expenseTab)]);
@@ -286,11 +298,10 @@ export default function DailyRecapPage() {
                         {activeConfig.income_fields.map((f) => (
                           <div key={f.key}>
                             <Label>{f.label}</Label>
-                            <Input
-                              type="number"
-                              value={incomeValues[f.key] || ''}
-                              onChange={(e) =>
-                                setIncomeValues((prev) => ({ ...prev, [f.key]: Number(e.target.value) }))
+                            <MoneyInput
+                              value={incomeValues[f.key]}
+                              onChange={(v) =>
+                                setIncomeValues((prev) => ({ ...prev, [f.key]: v }))
                               }
                               placeholder="Rp 0"
                             />
@@ -329,11 +340,10 @@ export default function DailyRecapPage() {
                               return (
                                 <div key={k}>
                                   <Label className="text-xs text-muted-foreground">{p.label}</Label>
-                                  <Input
-                                    type="number"
-                                    value={incomeValues[k] || ''}
-                                    onChange={(e) =>
-                                      setIncomeValues((prev) => ({ ...prev, [k]: Number(e.target.value) }))
+                                  <MoneyInput
+                                    value={incomeValues[k]}
+                                    onChange={(v) =>
+                                      setIncomeValues((prev) => ({ ...prev, [k]: v }))
                                     }
                                     placeholder="Rp 0"
                                   />
@@ -387,16 +397,16 @@ export default function DailyRecapPage() {
                                 value={l.item_name}
                                 onChange={(e) => updateLine(l.id, { item_name: e.target.value })}
                               />
-                              <Input
+                              <MoneyInput
                                 className="col-span-5 md:col-span-3"
-                                type="number"
                                 placeholder="Rp 0"
-                                value={l.unit_price || ''}
-                                onChange={(e) => updateLine(l.id, { unit_price: Number(e.target.value) })}
+                                value={l.unit_price}
+                                onChange={(v) => updateLine(l.id, { unit_price: v })}
                               />
                               <Input
                                 className="col-span-3 md:col-span-2"
                                 type="number"
+                                inputMode="numeric"
                                 value={l.qty || ''}
                                 onChange={(e) => updateLine(l.id, { qty: Number(e.target.value) })}
                               />
