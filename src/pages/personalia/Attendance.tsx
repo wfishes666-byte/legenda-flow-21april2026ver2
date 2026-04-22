@@ -7,12 +7,24 @@ import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
-import { CalendarCheck, ChevronLeft, ChevronRight, Save, MapPin, Plus, Crosshair } from 'lucide-react';
+import { CalendarCheck, ChevronLeft, ChevronRight, Save, MapPin, Plus, Crosshair, Trash2, AlertTriangle } from 'lucide-react';
 import { useOutlets } from '@/hooks/useOutlets';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth, AppRole } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
 import { format, parseISO } from 'date-fns';
 import { id as idLocale } from 'date-fns/locale';
+import { ExportButtons } from '@/components/ExportButtons';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 
 type StatusCode = 'H' | 'I' | 'S' | 'C' | 'L' | 'T';
 
