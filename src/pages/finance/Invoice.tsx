@@ -890,9 +890,10 @@ export default function InvoicePage() {
 }
 
 // ============ Sub-component: autocomplete ============
-// Saran katalog hanya muncul saat user klik tombol panah (ChevronDown).
-// Mengetik di input TIDAK akan otomatis membuka dropdown — menghindari bug
-// popover yang tertutup tiba-tiba akibat focus berpindah.
+// Popover saran katalog. Tidak menutup tiba-tiba karena:
+//  - onOpenAutoFocus & onCloseAutoFocus dicegah → focus tetap di input.
+//  - onInteractOutside mengabaikan klik kembali ke input itu sendiri.
+//  - Input dibungkus div sebagai PopoverTrigger agar Radix tidak merebut focus input.
 function ItemAutocomplete({
   value, catalog, onChange, onPick,
 }: {
@@ -901,8 +902,8 @@ function ItemAutocomplete({
   onChange: (v: string) => void;
   onPick: (item: CatalogItem) => void;
 }) {
-  const [open, setOpen] = React.useState(false);
-  const wrapRef = React.useRef<HTMLDivElement>(null);
+  const [open, setOpen] = useState(false);
+  const inputRef = React.useRef<HTMLInputElement>(null);
 
   const filtered = useMemo(() => {
     const q = value.trim().toLowerCase();
@@ -910,66 +911,55 @@ function ItemAutocomplete({
     return catalog.filter((c) => c.name.toLowerCase().includes(q)).slice(0, 30);
   }, [catalog, value]);
 
-  // Tutup saat klik di luar
-  React.useEffect(() => {
-    if (!open) return;
-    const onDocClick = (e: MouseEvent) => {
-      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', onDocClick);
-    return () => document.removeEventListener('mousedown', onDocClick);
-  }, [open]);
-
   return (
-    <div ref={wrapRef} className="relative">
-      <div className="relative">
-        <Input
-          className="h-9 text-sm pr-8"
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder="Ketik nama item"
-        />
-        <button
-          type="button"
-          aria-label="Tampilkan saran katalog"
-          onClick={() => setOpen((o) => !o)}
-          className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 inline-flex items-center justify-center rounded hover:bg-muted text-muted-foreground"
-        >
-          <ChevronDown className={`w-4 h-4 transition-transform ${open ? 'rotate-180' : ''}`} />
-        </button>
-      </div>
-      {open && (
-        <div className="absolute z-50 mt-1 w-[320px] max-w-[calc(100vw-2rem)] rounded-md border bg-popover text-popover-foreground shadow-md">
-          <div className="max-h-[260px] overflow-y-auto p-1">
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <div className="w-full">
+          <Input
+            ref={inputRef}
+            className="h-9 text-sm"
+            value={value}
+            onChange={(e) => { onChange(e.target.value); if (!open) setOpen(true); }}
+            onFocus={() => setOpen(true)}
+            placeholder="Cari atau ketik nama item"
+          />
+        </div>
+      </PopoverTrigger>
+      <PopoverContent
+        className="p-0 w-[320px]"
+        align="start"
+        sideOffset={4}
+        onOpenAutoFocus={(e) => e.preventDefault()}
+        onCloseAutoFocus={(e) => e.preventDefault()}
+        onInteractOutside={(e) => {
+          if (inputRef.current && inputRef.current.contains(e.target as Node)) {
+            e.preventDefault();
+          }
+        }}
+      >
+        <Command shouldFilter={false}>
+          <CommandList>
             {filtered.length === 0 ? (
-              <div className="py-6 text-center text-xs text-muted-foreground">
-                Tidak ada di katalog. Tetap bisa diketik manual.
-              </div>
+              <CommandEmpty>Tidak ada di katalog. Tetap bisa diketik manual.</CommandEmpty>
             ) : (
-              <>
-                <div className="px-2 py-1.5 text-[10px] font-semibold uppercase text-muted-foreground">
-                  Saran dari Katalog
-                </div>
+              <CommandGroup heading="Saran dari Katalog">
                 {filtered.map((c) => (
-                  <button
+                  <CommandItem
                     key={c.id}
-                    type="button"
-                    onClick={() => { onPick(c); setOpen(false); }}
-                    className="w-full flex items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground text-left"
+                    value={c.name}
+                    onSelect={() => { onPick(c); setOpen(false); }}
                   >
-                    <span className="font-medium truncate">{c.name}</span>
-                    <span className="ml-auto text-xs text-muted-foreground whitespace-nowrap">
+                    <span className="font-medium">{c.name}</span>
+                    <span className="ml-auto text-xs text-muted-foreground">
                       {c.unit} · Rp {Number(c.default_price).toLocaleString('id-ID')}
                     </span>
-                  </button>
+                  </CommandItem>
                 ))}
-              </>
+              </CommandGroup>
             )}
-          </div>
-        </div>
-      )}
-    </div>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
   );
 }
