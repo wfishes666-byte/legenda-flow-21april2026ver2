@@ -373,7 +373,7 @@ export default function AttendancePage() {
           </TabsContent>
 
           <TabsContent value="logs">
-            <SelfieLogsTab outlets={outlets} allProfiles={profiles} />
+            <SelfieLogsTab outlets={outlets} allProfiles={profiles} role={role} />
           </TabsContent>
 
           {canManageOutlets && (
