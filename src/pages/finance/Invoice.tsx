@@ -13,7 +13,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import {
-  Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList,
+  Command, CommandEmpty, CommandGroup, CommandItem, CommandList,
 } from '@/components/ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
@@ -26,6 +26,8 @@ import { CsvImportButton } from '@/components/CsvImportButton';
 import { ExportButtons } from '@/components/ExportButtons';
 import { formatRpExport } from '@/lib/exportUtils';
 import { MoneyInput } from '@/components/MoneyInput';
+import { exportInvoicePDF } from '@/lib/invoicePdf';
+import { Printer } from 'lucide-react';
 
 interface CatalogItem {
   id: string;
@@ -583,6 +585,24 @@ export default function InvoicePage() {
                                         <Button
                                           size="sm"
                                           variant="outline"
+                                          className="h-7 text-[11px] px-2"
+                                          onClick={() => exportInvoicePDF({
+                                            invoice_number: inv.invoice_number,
+                                            invoice_date: inv.invoice_date,
+                                            outlet_name: inv.outlet_name,
+                                            recipient: inv.recipient,
+                                            status: inv.status,
+                                            total: Number(inv.total),
+                                            notes: inv.notes,
+                                            items: inv.items || [],
+                                          })}
+                                          title="Cetak PDF"
+                                        >
+                                          <Printer className="w-3 h-3 mr-1" /> PDF
+                                        </Button>
+                                        <Button
+                                          size="sm"
+                                          variant="outline"
                                           className="h-7 text-[11px] px-2 border-green-600/40 text-green-700 dark:text-green-400 hover:bg-green-500/10"
                                           onClick={() => togglePaid(inv)}
                                         >
@@ -879,29 +899,50 @@ function ItemAutocomplete({
   onPick: (item: CatalogItem) => void;
 }) {
   const [open, setOpen] = useState(false);
+  const filtered = useMemo(() => {
+    const q = value.trim().toLowerCase();
+    if (!q) return catalog.slice(0, 30);
+    return catalog
+      .filter((c) => c.name.toLowerCase().includes(q))
+      .slice(0, 30);
+  }, [catalog, value]);
+
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <Input
+          className="h-9 text-sm"
           value={value}
           onChange={(e) => { onChange(e.target.value); if (!open) setOpen(true); }}
           onFocus={() => setOpen(true)}
           placeholder="Cari atau ketik nama item"
         />
       </PopoverTrigger>
-      <PopoverContent className="p-0 w-[280px]" align="start" onOpenAutoFocus={(e) => e.preventDefault()}>
-        <Command>
-          <CommandInput placeholder="Cari item..." value={value} onValueChange={onChange} />
+      <PopoverContent
+        className="p-0 w-[320px]"
+        align="start"
+        onOpenAutoFocus={(e) => e.preventDefault()}
+      >
+        <Command shouldFilter={false}>
           <CommandList>
-            <CommandEmpty>Tidak ada di katalog. Tetap bisa diketik manual.</CommandEmpty>
-            <CommandGroup>
-              {catalog.map((c) => (
-                <CommandItem key={c.id} value={c.name} onSelect={() => { onPick(c); setOpen(false); }}>
-                  <span className="font-medium">{c.name}</span>
-                  <span className="ml-auto text-xs text-muted-foreground">{c.unit} · Rp {Number(c.default_price).toLocaleString('id-ID')}</span>
-                </CommandItem>
-              ))}
-            </CommandGroup>
+            {filtered.length === 0 ? (
+              <CommandEmpty>Tidak ada di katalog. Tetap bisa diketik manual.</CommandEmpty>
+            ) : (
+              <CommandGroup heading="Saran dari Katalog">
+                {filtered.map((c) => (
+                  <CommandItem
+                    key={c.id}
+                    value={c.name}
+                    onSelect={() => { onPick(c); setOpen(false); }}
+                  >
+                    <span className="font-medium">{c.name}</span>
+                    <span className="ml-auto text-xs text-muted-foreground">
+                      {c.unit} · Rp {Number(c.default_price).toLocaleString('id-ID')}
+                    </span>
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            )}
           </CommandList>
         </Command>
       </PopoverContent>
