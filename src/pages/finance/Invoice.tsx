@@ -321,7 +321,7 @@ export default function InvoicePage() {
 
   return (
     <AppLayout>
-      <div className="max-w-6xl mx-auto space-y-6">
+      <div className="max-w-7xl mx-auto space-y-6">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold font-sans flex items-center gap-3">
             <FileText className="w-7 h-7" /> Invoice

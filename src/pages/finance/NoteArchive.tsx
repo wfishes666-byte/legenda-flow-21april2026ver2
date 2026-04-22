@@ -234,7 +234,7 @@ export default function NoteArchivePage() {
 
   return (
     <AppLayout>
-      <div className="space-y-6">
+      <div className="max-w-7xl mx-auto space-y-6">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold text-foreground">Arsip Nota</h1>
           <p className="text-sm text-muted-foreground mt-1">Foto dan simpan nota pembelian harian per outlet</p>
