@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { supabase } from '@/integrations/supabase/client';
 import AppLayout from '@/components/AppLayout';
 import { useOutlets } from '@/hooks/useOutlets';
@@ -899,7 +900,9 @@ function ItemAutocomplete({
   onPick: (item: CatalogItem) => void;
 }) {
   const [open, setOpen] = useState(false);
-  const rootRef = React.useRef<HTMLDivElement>(null);
+  const inputRef = React.useRef<HTMLInputElement>(null);
+  const dropdownRef = React.useRef<HTMLDivElement>(null);
+  const [pos, setPos] = React.useState<{ left: number; top: number; width: number } | null>(null);
 
   const filtered = useMemo(() => {
     const q = value.trim().toLowerCase();
@@ -907,26 +910,46 @@ function ItemAutocomplete({
     return catalog.filter((c) => c.name.toLowerCase().includes(q)).slice(0, 30);
   }, [catalog, value]);
 
+  // Hitung & update posisi dropdown (mengikuti input saat scroll/resize)
+  const updatePos = React.useCallback(() => {
+    const el = inputRef.current;
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    setPos({ left: r.left, top: r.bottom + 4, width: Math.max(r.width, 280) });
+  }, []);
+
   useEffect(() => {
     if (!open) return;
-
-    const handlePointerDown = (event: MouseEvent | TouchEvent) => {
-      if (!rootRef.current?.contains(event.target as Node)) {
-        setOpen(false);
-      }
-    };
-
-    document.addEventListener('mousedown', handlePointerDown);
-    document.addEventListener('touchstart', handlePointerDown);
+    updatePos();
+    window.addEventListener('scroll', updatePos, true);
+    window.addEventListener('resize', updatePos);
     return () => {
-      document.removeEventListener('mousedown', handlePointerDown);
-      document.removeEventListener('touchstart', handlePointerDown);
+      window.removeEventListener('scroll', updatePos, true);
+      window.removeEventListener('resize', updatePos);
+    };
+  }, [open, updatePos]);
+
+  // Tutup saat klik di luar input & dropdown
+  useEffect(() => {
+    if (!open) return;
+    const handle = (event: MouseEvent | TouchEvent) => {
+      const t = event.target as Node;
+      if (inputRef.current?.contains(t)) return;
+      if (dropdownRef.current?.contains(t)) return;
+      setOpen(false);
+    };
+    document.addEventListener('mousedown', handle);
+    document.addEventListener('touchstart', handle);
+    return () => {
+      document.removeEventListener('mousedown', handle);
+      document.removeEventListener('touchstart', handle);
     };
   }, [open]);
 
   return (
-    <div ref={rootRef} className="relative">
+    <>
       <Input
+        ref={inputRef}
         className="h-9 text-sm"
         value={value}
         onChange={(e) => {
@@ -938,8 +961,19 @@ function ItemAutocomplete({
         placeholder="Cari atau ketik nama item"
       />
 
-      {open && (
-        <div className="absolute left-0 top-full z-50 mt-1 w-[320px] max-w-[min(320px,calc(100vw-3rem))] rounded-md border bg-popover text-popover-foreground shadow-md outline-none">
+      {open && pos && createPortal(
+        <div
+          ref={dropdownRef}
+          style={{
+            position: 'fixed',
+            left: pos.left,
+            top: pos.top,
+            width: pos.width,
+            maxWidth: 'calc(100vw - 1rem)',
+            zIndex: 9999,
+          }}
+          className="rounded-md border bg-popover text-popover-foreground shadow-lg outline-none"
+        >
           <div className="max-h-[300px] overflow-y-auto p-1">
             {filtered.length === 0 ? (
               <div className="py-6 text-center text-sm text-muted-foreground">
@@ -955,7 +989,9 @@ function ItemAutocomplete({
                     key={c.id}
                     type="button"
                     className="relative flex w-full cursor-default select-none items-center rounded-sm px-2 py-2 text-sm outline-none hover:bg-accent hover:text-accent-foreground"
-                    onClick={() => {
+                    // Pakai onMouseDown supaya pemilihan terjadi sebelum input blur
+                    onMouseDown={(e) => {
+                      e.preventDefault();
                       onPick(c);
                       setOpen(false);
                     }}
@@ -969,8 +1005,9 @@ function ItemAutocomplete({
               </div>
             )}
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
-    </div>
+    </>
   );
 }
