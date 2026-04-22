@@ -369,7 +369,7 @@ export default function AttendancePage() {
           </TabsContent>
 
           <TabsContent value="recap">
-            <RecapTab outletId={selectedOutlet} profiles={outletProfiles} />
+            <RecapTab outletId={selectedOutlet} profiles={outletProfiles} role={role} />
           </TabsContent>
 
           <TabsContent value="logs">
