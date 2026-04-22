@@ -262,7 +262,7 @@ export default function ProfitLossPage() {
 
   return (
     <AppLayout>
-      <div className="max-w-6xl mx-auto space-y-6">
+      <div className="max-w-7xl mx-auto space-y-6">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <h1 className="text-2xl md:text-3xl font-bold font-sans flex items-center gap-3">
             <TrendingUp className="w-7 h-7" /> Laporan Laba Rugi
