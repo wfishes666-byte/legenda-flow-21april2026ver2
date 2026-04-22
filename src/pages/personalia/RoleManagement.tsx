@@ -11,6 +11,7 @@ import { AppRole, useAuth } from '@/hooks/useAuth';
 import { useMenuPermissions } from '@/hooks/useMenuPermissions';
 import CustomRolesTab from '@/components/role-mgmt/CustomRolesTab';
 import MenuPermissionsTab from '@/components/role-mgmt/MenuPermissionsTab';
+import { useTabParam } from '@/hooks/useTabParam';
 
 interface UserWithRole {
   user_id: string;
@@ -38,6 +39,7 @@ const roleBadgeVariant = (role: string): any => {
 export default function RoleManagement() {
   const { toast } = useToast();
   const { role: currentRole } = useAuth();
+  const [mainTab, setMainTab] = useTabParam('users');
   const canManage = currentRole === 'admin';
   const { customRoles, isEnabled, getPerm, refetch: refetchPerms } = useMenuPermissions();
   const [users, setUsers] = useState<UserWithRole[]>([]);
@@ -100,7 +102,7 @@ export default function RoleManagement() {
           </p>
         </div>
 
-        <Tabs defaultValue="users" className="space-y-4">
+        <Tabs value={mainTab} onValueChange={setMainTab} className="space-y-4">
           <TabsList>
             <TabsTrigger value="users">Role Karyawan</TabsTrigger>
             <TabsTrigger value="custom">Role Kustom</TabsTrigger>

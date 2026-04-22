@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useOutlets } from '@/hooks/useOutlets';
+import { useTabParam } from '@/hooks/useTabParam';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -53,6 +54,7 @@ const formatDateLong = (iso: string) => {
 export default function NoteArchivePage() {
   const { user } = useAuth();
   const { outlets, loading: outletsLoading } = useOutlets();
+  const [mainTab, setMainTab] = useTabParam('upload');
   const [uploadOutletId, setUploadOutletId] = useState<string>('');
   const [uploadDate, setUploadDate] = useState<string>(() => new Date().toISOString().slice(0, 10));
   const [pending, setPending] = useState<PendingFile[]>([]);
@@ -238,7 +240,7 @@ export default function NoteArchivePage() {
           <p className="text-sm text-muted-foreground mt-1">Foto dan simpan nota pembelian harian per outlet</p>
         </div>
 
-        <Tabs defaultValue="upload" className="space-y-6">
+        <Tabs value={mainTab} onValueChange={setMainTab} className="space-y-6">
           <TabsList>
             <TabsTrigger value="upload">Upload Nota</TabsTrigger>
             <TabsTrigger value="gallery">Galeri Nota</TabsTrigger>

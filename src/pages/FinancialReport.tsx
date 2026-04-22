@@ -3,6 +3,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import AppLayout from '@/components/AppLayout';
 import { useOutlets } from '@/hooks/useOutlets';
+import { useTabParam } from '@/hooks/useTabParam';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { CollapsibleSection } from '@/components/CollapsibleSection';
 import { Button } from '@/components/ui/button';
@@ -59,6 +60,7 @@ const parseNum = (v: string | number) => {
 export default function FinancialReport() {
   const { user, role } = useAuth();
   const { toast } = useToast();
+  const [mainTab, setMainTab] = useTabParam('input');
   const { outlets, selectedOutlet, setSelectedOutlet } = useOutlets();
   const [submitting, setSubmitting] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
@@ -414,7 +416,7 @@ export default function FinancialReport() {
           </div>
         </div>
 
-        <Tabs defaultValue="input" className="w-full">
+        <Tabs value={mainTab} onValueChange={setMainTab} className="w-full">
           <TabsList>
             <TabsTrigger value="input"><FileText className="w-4 h-4 sm:mr-1.5" /><span className="hidden sm:inline">Input Laporan</span><span className="sm:hidden ml-1">Input</span></TabsTrigger>
             <TabsTrigger value="log"><ListChecks className="w-4 h-4 sm:mr-1.5" /><span className="hidden sm:inline">Rekap Log</span><span className="sm:hidden ml-1">Rekap</span></TabsTrigger>

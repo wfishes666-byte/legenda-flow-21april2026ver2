@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import AppLayout from '@/components/AppLayout';
 import OutletSelector from '@/components/OutletSelector';
 import { useOutlets } from '@/hooks/useOutlets';
+import { useTabParam } from '@/hooks/useTabParam';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -50,6 +51,7 @@ interface PLCategory {
 export default function ProfitLossPage() {
   const { toast } = useToast();
   const { outlets, selectedOutlet, setSelectedOutlet } = useOutlets();
+  const [mainTab, setMainTab] = useTabParam('input');
   const [month, setMonth] = useState(format(new Date(), 'yyyy-MM'));
   const [incomeData, setIncomeData] = useState({ offline: 0, online: 0 });
   const [reportGroups, setReportGroups] = useState<ReportGroup[]>([]);
@@ -289,7 +291,7 @@ export default function ProfitLossPage() {
           </div>
         </div>
 
-        <Tabs defaultValue="input" className="w-full">
+        <Tabs value={mainTab} onValueChange={setMainTab} className="w-full">
           <TabsList className="grid w-full md:w-auto grid-cols-2">
             <TabsTrigger value="input">Input Akun {uncategorizedCount > 0 && `(${uncategorizedCount})`}</TabsTrigger>
             <TabsTrigger value="lr">Laporan L/R</TabsTrigger>

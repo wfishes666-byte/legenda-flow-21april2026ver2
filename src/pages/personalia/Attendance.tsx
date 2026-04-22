@@ -10,6 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 import { CalendarCheck, ChevronLeft, ChevronRight, Save, MapPin, Plus, Crosshair, Trash2, AlertTriangle } from 'lucide-react';
 import { useOutlets } from '@/hooks/useOutlets';
 import { useAuth, AppRole } from '@/hooks/useAuth';
+import { useTabParam } from '@/hooks/useTabParam';
 import { cn } from '@/lib/utils';
 import { format, parseISO } from 'date-fns';
 import { id as idLocale } from 'date-fns/locale';
@@ -64,6 +65,7 @@ interface RowState {
 export default function AttendancePage() {
   const { role } = useAuth();
   const canManageOutlets = role === 'management' || role === 'admin';
+  const [mainTab, setMainTab] = useTabParam('input');
   const { toast } = useToast();
   const { outlets, selectedOutlet, setSelectedOutlet, loading: outletsLoading } = useOutlets();
   const [profiles, setProfiles] = useState<Profile[]>([]);
@@ -192,7 +194,7 @@ export default function AttendancePage() {
           <p className="text-muted-foreground mt-1">Input dan rekap kehadiran karyawan per outlet</p>
         </div>
 
-        <Tabs defaultValue="input" className="w-full">
+        <Tabs value={mainTab} onValueChange={setMainTab} className="w-full">
           <TabsList>
             <TabsTrigger value="input">Input Absensi</TabsTrigger>
             <TabsTrigger value="recap">Rekap Bulanan</TabsTrigger>
