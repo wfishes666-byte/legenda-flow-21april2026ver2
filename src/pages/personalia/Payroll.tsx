@@ -9,10 +9,25 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
+import { usePersistentDraft } from '@/hooks/usePersistentDraft';
 import { Badge } from '@/components/ui/badge';
 import { DollarSign, Plus, Calculator, Printer } from 'lucide-react';
 
 const months = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+const createPayrollDraft = () => ({
+  user_id: '',
+  period_month: String(new Date().getMonth() + 1),
+  period_year: String(new Date().getFullYear()),
+  base_salary: '',
+  meal_allowance: '',
+  transport_allowance: '',
+  other_allowance: '',
+  absence_deduction: '',
+  cashbon_deduction: '',
+  punishment_deduction: '',
+  other_deduction: '',
+  notes: '',
+});
 
 export default function PayrollPage() {
   const { user, role, isCustom } = useAuth() as any;
@@ -25,11 +40,8 @@ export default function PayrollPage() {
     (role ? getPerm(role, 'personalia.payroll', 'can_create', isCustom) : false);
   const [records, setRecords] = useState<any[]>([]);
   const [profiles, setProfiles] = useState<any[]>([]);
-  const [form, setForm] = useState({
-    user_id: '', period_month: String(new Date().getMonth() + 1), period_year: String(new Date().getFullYear()),
-    base_salary: '', meal_allowance: '', transport_allowance: '', other_allowance: '',
-    absence_deduction: '', cashbon_deduction: '', punishment_deduction: '', other_deduction: '', notes: '',
-  });
+  const payrollDraft = usePersistentDraft('draft:payroll-form-v1', createPayrollDraft());
+  const [form, setForm] = useState(payrollDraft.value);
   const [submitting, setSubmitting] = useState(false);
 
   const fetchData = async () => {
@@ -43,6 +55,9 @@ export default function PayrollPage() {
   };
 
   useEffect(() => { fetchData(); }, [role]);
+  useEffect(() => {
+    payrollDraft.setValue(form);
+  }, [form, payrollDraft]);
 
   // Auto-fill salary components when employee is selected
   const handleSelectEmployee = (userId: string) => {
@@ -121,6 +136,8 @@ export default function PayrollPage() {
       toast({ title: 'Gagal', description: error.message, variant: 'destructive' });
     } else {
       toast({ title: 'Berhasil', description: 'Payroll tersimpan.' });
+      payrollDraft.clear(createPayrollDraft());
+      setForm(createPayrollDraft());
       fetchData();
     }
     setSubmitting(false);

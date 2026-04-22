@@ -14,6 +14,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Paperclip, Camera, Trash2, Image as ImageIcon, Calendar as CalendarIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { usePersistentDraft } from '@/hooks/usePersistentDraft';
 
 interface NoteArchive {
   id: string;
@@ -57,6 +58,11 @@ export default function NoteArchivePage() {
   const [mainTab, setMainTab] = useTabParam('upload');
   const [uploadOutletId, setUploadOutletId] = useState<string>('');
   const [uploadDate, setUploadDate] = useState<string>(() => new Date().toISOString().slice(0, 10));
+  const noteDraft = usePersistentDraft('draft:note-archive-meta-v1', {
+    uploadOutletId: '',
+    uploadDate: new Date().toISOString().slice(0, 10),
+    pendingMeta: [] as { note_name: string; amount: string }[],
+  });
   const [pending, setPending] = useState<PendingFile[]>([]);
   const [uploading, setUploading] = useState(false);
   const [archives, setArchives] = useState<NoteArchive[]>([]);
@@ -73,6 +79,23 @@ export default function NoteArchivePage() {
   useEffect(() => {
     if (!uploadOutletId && outlets.length > 0) setUploadOutletId(outlets[0].id);
   }, [outlets, uploadOutletId]);
+  useEffect(() => {
+    if (noteDraft.value.uploadOutletId && !uploadOutletId) {
+      setUploadOutletId(noteDraft.value.uploadOutletId);
+    }
+  }, [noteDraft.value.uploadOutletId, uploadOutletId]);
+  useEffect(() => {
+    if (noteDraft.value.uploadDate && uploadDate !== noteDraft.value.uploadDate) {
+      setUploadDate(noteDraft.value.uploadDate);
+    }
+  }, [noteDraft.value.uploadDate]);
+  useEffect(() => {
+    noteDraft.setValue({
+      uploadOutletId,
+      uploadDate,
+      pendingMeta: pending.map((p) => ({ note_name: p.note_name, amount: p.amount })),
+    });
+  }, [noteDraft, pending, uploadDate, uploadOutletId]);
 
   const fetchArchives = async () => {
     setLoading(true);
@@ -96,12 +119,13 @@ export default function NoteArchivePage() {
     const arr: PendingFile[] = [];
     Array.from(files).forEach((f) => {
       if (!f.type.startsWith('image/')) return;
+      const savedMeta = noteDraft.value.pendingMeta[arr.length + pending.length];
       arr.push({
         id: crypto.randomUUID(),
         file: f,
         preview: URL.createObjectURL(f),
-        note_name: '',
-        amount: '',
+        note_name: savedMeta?.note_name || '',
+        amount: savedMeta?.amount || '',
       });
     });
     if (arr.length === 0) {
@@ -191,6 +215,11 @@ export default function NoteArchivePage() {
       }
       if (success > 0) toast.success(`${success} nota berhasil disimpan.`);
       pending.forEach((p) => URL.revokeObjectURL(p.preview));
+      noteDraft.clear({
+        uploadOutletId,
+        uploadDate: new Date().toISOString().slice(0, 10),
+        pendingMeta: [],
+      });
       setPending([]);
       setMetaDialogOpen(false);
       fetchArchives();

@@ -16,6 +16,7 @@ import { format } from 'date-fns';
 import { id as idLocale } from 'date-fns/locale';
 import { useNavigate } from 'react-router-dom';
 import { ShowMoreList } from '@/components/ShowMoreList';
+import { usePersistentDraft } from '@/hooks/usePersistentDraft';
 
 interface Profile {
   full_name: string;
@@ -52,7 +53,8 @@ export default function ProfilePage() {
   const [submitting, setSubmitting] = useState(false);
 
   const [cashbonOpen, setCashbonOpen] = useState(false);
-  const [cashbonForm, setCashbonForm] = useState({ amount: '', notes: '' });
+  const cashbonDraft = usePersistentDraft('draft:cashbon-request-v1', { amount: '', notes: '' });
+  const [cashbonForm, setCashbonForm] = useState(cashbonDraft.value);
   const [cashbonSubmitting, setCashbonSubmitting] = useState(false);
   const [cashbonRecords, setCashbonRecords] = useState<CashbonRecord[]>([]);
   const [todayLogs, setTodayLogs] = useState<{ log_type: string; created_at: string; selfie_url: string }[]>([]);
@@ -140,6 +142,9 @@ export default function ProfilePage() {
     fetchCashbon();
     fetchTodayAttendance();
   }, [user]);
+  useEffect(() => {
+    cashbonDraft.setValue(cashbonForm);
+  }, [cashbonDraft, cashbonForm]);
 
   const handleLeaveSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -181,6 +186,7 @@ export default function ProfilePage() {
     } else {
       toast({ title: 'Berhasil!', description: 'Pengajuan cashbon telah dikirim.' });
       setCashbonOpen(false);
+      cashbonDraft.clear({ amount: '', notes: '' });
       setCashbonForm({ amount: '', notes: '' });
       fetchCashbon();
     }
