@@ -26,6 +26,8 @@ import { CsvImportButton } from '@/components/CsvImportButton';
 import { ExportButtons } from '@/components/ExportButtons';
 import { formatRpExport } from '@/lib/exportUtils';
 import { MoneyInput } from '@/components/MoneyInput';
+import { exportInvoicePDF } from '@/lib/invoicePdf';
+import { Printer } from 'lucide-react';
 
 interface CatalogItem {
   id: string;
