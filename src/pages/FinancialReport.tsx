@@ -126,7 +126,19 @@ export default function FinancialReport() {
   const branchName = outlets.find((o) => o.id === selectedOutlet)?.name || 'Pilih Cabang';
 
   const updateExpense = (id: string, field: keyof ExpenseRow, value: any) => {
-    setExpenses((prev) => prev.map((e) => (e.id === id ? { ...e, [field]: value } : e)));
+    setExpenses((prev) => {
+      const next = prev.map((e) => (e.id === id ? { ...e, [field]: value } : e));
+      // Auto-add baris baru jika baris terakhir mulai diisi
+      const last = next[next.length - 1];
+      if (last && last.id === id) {
+        const hasContent =
+          (field === 'description' ? String(value).trim() : last.description.trim()) !== ''
+          || (field === 'unit_price' ? Number(value) : last.unit_price) > 0
+          || (field === 'qty' ? Number(value) : last.qty) > 0;
+        if (hasContent) next.push(newExp());
+      }
+      return next;
+    });
   };
 
   const addExpenseRow = () => setExpenses((prev) => [...prev, newExp()]);
