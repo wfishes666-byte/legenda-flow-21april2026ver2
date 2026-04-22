@@ -59,6 +59,7 @@ const parseNum = (v: string | number) => {
 export default function FinancialReport() {
   const { user, role } = useAuth();
   const { toast } = useToast();
+  const [mainTab, setMainTab] = useTabParam('input');
   const { outlets, selectedOutlet, setSelectedOutlet } = useOutlets();
   const [submitting, setSubmitting] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);

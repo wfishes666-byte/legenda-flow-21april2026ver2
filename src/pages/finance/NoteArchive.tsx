@@ -53,6 +53,7 @@ const formatDateLong = (iso: string) => {
 export default function NoteArchivePage() {
   const { user } = useAuth();
   const { outlets, loading: outletsLoading } = useOutlets();
+  const [mainTab, setMainTab] = useTabParam('upload');
   const [uploadOutletId, setUploadOutletId] = useState<string>('');
   const [uploadDate, setUploadDate] = useState<string>(() => new Date().toISOString().slice(0, 10));
   const [pending, setPending] = useState<PendingFile[]>([]);

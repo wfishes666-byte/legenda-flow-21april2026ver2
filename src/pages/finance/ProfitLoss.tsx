@@ -50,6 +50,7 @@ interface PLCategory {
 export default function ProfitLossPage() {
   const { toast } = useToast();
   const { outlets, selectedOutlet, setSelectedOutlet } = useOutlets();
+  const [mainTab, setMainTab] = useTabParam('input');
   const [month, setMonth] = useState(format(new Date(), 'yyyy-MM'));
   const [incomeData, setIncomeData] = useState({ offline: 0, online: 0 });
   const [reportGroups, setReportGroups] = useState<ReportGroup[]>([]);

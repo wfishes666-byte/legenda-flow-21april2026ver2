@@ -64,6 +64,7 @@ interface RowState {
 export default function AttendancePage() {
   const { role } = useAuth();
   const canManageOutlets = role === 'management' || role === 'admin';
+  const [mainTab, setMainTab] = useTabParam('input');
   const { toast } = useToast();
   const { outlets, selectedOutlet, setSelectedOutlet, loading: outletsLoading } = useOutlets();
   const [profiles, setProfiles] = useState<Profile[]>([]);

@@ -47,6 +47,7 @@ export default function DailyRecapPage() {
   const { toast } = useToast();
   const { outlets, loading: outletsLoading } = useOutlets();
   const [activeOutlet, setActiveOutlet] = useState<string>('');
+  const [mainTab, setMainTab] = useTabParam('input');
   const [submitting, setSubmitting] = useState(false);
   const [reports, setReports] = useState<any[]>([]);
   const [configs, setConfigs] = useState<Record<string, OutletFinanceConfig>>({});

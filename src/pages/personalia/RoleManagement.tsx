@@ -38,6 +38,7 @@ const roleBadgeVariant = (role: string): any => {
 export default function RoleManagement() {
   const { toast } = useToast();
   const { role: currentRole } = useAuth();
+  const [mainTab, setMainTab] = useTabParam('users');
   const canManage = currentRole === 'admin';
   const { customRoles, isEnabled, getPerm, refetch: refetchPerms } = useMenuPermissions();
   const [users, setUsers] = useState<UserWithRole[]>([]);
