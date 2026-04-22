@@ -22,6 +22,7 @@ import {
 import FinanceStatsRecap from '@/components/finance/FinanceStatsRecap';
 import { useTabParam } from '@/hooks/useTabParam';
 import { MoneyInput } from '@/components/MoneyInput';
+import { usePersistentDraft } from '@/hooks/usePersistentDraft';
 
 type PaymentType = 'cash' | 'transfer';
 
@@ -42,6 +43,14 @@ const newLine = (payment_type: PaymentType): ExpenseLine => ({
 });
 
 const formatRp = (v: number) => `Rp ${(v || 0).toLocaleString('id-ID')}`;
+const createDailyRecapDraft = () => ({
+  reportDate: new Date().toISOString().split('T')[0],
+  reporterName: '',
+  incomeValues: {} as Record<string, number>,
+  notes: '',
+  lines: [newLine('cash')],
+  expenseTab: 'cash' as PaymentType,
+});
 
 export default function DailyRecapPage() {
   const { user, role } = useAuth();
@@ -56,12 +65,13 @@ export default function DailyRecapPage() {
   const canManage = role === 'admin' || role === 'management' || role === 'pic';
 
   // form state
-  const [reportDate, setReportDate] = useState(new Date().toISOString().split('T')[0]);
-  const [reporterName, setReporterName] = useState('');
-  const [incomeValues, setIncomeValues] = useState<Record<string, number>>({});
-  const [notes, setNotes] = useState('');
-  const [lines, setLines] = useState<ExpenseLine[]>([newLine('cash')]);
-  const [expenseTab, setExpenseTab] = useState<PaymentType>('cash');
+  const dailyDraft = usePersistentDraft('draft:daily-recap-v1', createDailyRecapDraft());
+  const [reportDate, setReportDate] = useState(dailyDraft.value.reportDate);
+  const [reporterName, setReporterName] = useState(dailyDraft.value.reporterName);
+  const [incomeValues, setIncomeValues] = useState<Record<string, number>>(dailyDraft.value.incomeValues);
+  const [notes, setNotes] = useState(dailyDraft.value.notes);
+  const [lines, setLines] = useState<ExpenseLine[]>(dailyDraft.value.lines.length ? dailyDraft.value.lines : [newLine('cash')]);
+  const [expenseTab, setExpenseTab] = useState<PaymentType>(dailyDraft.value.expenseTab);
   const [expandedRows, setExpandedRows] = useState<Record<string, boolean>>({});
 
   // Resolve current outlet config (fallback to default)
@@ -122,6 +132,9 @@ export default function DailyRecapPage() {
   };
 
   useEffect(() => { fetchReports(); }, [activeOutlet]);
+  useEffect(() => {
+    dailyDraft.setValue({ reportDate, reporterName, incomeValues, notes, lines, expenseTab });
+  }, [dailyDraft, expenseTab, incomeValues, lines, notes, reportDate, reporterName]);
 
   // computed
   const cashLines = lines.filter((l) => l.payment_type === 'cash');
@@ -172,6 +185,7 @@ export default function DailyRecapPage() {
     setIncomeValues(init);
     setNotes('');
     setLines([newLine('cash')]);
+    setExpenseTab('cash');
   };
 
   const handleSubmit = async () => {
@@ -222,6 +236,7 @@ export default function DailyRecapPage() {
 
     setSubmitting(false);
     toast({ title: 'Tersimpan', description: 'Laporan harian finance ditambahkan.' });
+    dailyDraft.clear(createDailyRecapDraft());
     resetForm();
     fetchReports();
   };
