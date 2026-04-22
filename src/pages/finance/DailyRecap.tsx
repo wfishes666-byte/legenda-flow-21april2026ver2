@@ -19,6 +19,7 @@ import {
   evalSelisih,
   type OutletFinanceConfig,
 } from '@/lib/financeConfig';
+import FinanceStatsRecap from '@/components/finance/FinanceStatsRecap';
 
 type PaymentType = 'cash' | 'transfer';
 
@@ -239,6 +240,7 @@ export default function DailyRecapPage() {
           <TabsList>
             <TabsTrigger value="input">Input Laporan</TabsTrigger>
             <TabsTrigger value="recap">Rekap Laporan</TabsTrigger>
+            <TabsTrigger value="stats">Statistik</TabsTrigger>
           </TabsList>
 
           {/* INPUT TAB */}
@@ -629,6 +631,11 @@ export default function DailyRecapPage() {
                 </div>
               </CardContent>
             </Card>
+          </TabsContent>
+
+          {/* STATS TAB */}
+          <TabsContent value="stats" className="mt-4">
+            <FinanceStatsRecap />
           </TabsContent>
         </Tabs>
       </div>
