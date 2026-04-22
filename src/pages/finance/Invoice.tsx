@@ -890,6 +890,9 @@ export default function InvoicePage() {
 }
 
 // ============ Sub-component: autocomplete ============
+// Saran katalog hanya muncul saat user klik tombol panah (ChevronDown).
+// Mengetik di input TIDAK akan otomatis membuka dropdown — menghindari bug
+// popover yang tertutup tiba-tiba akibat focus berpindah.
 function ItemAutocomplete({
   value, catalog, onChange, onPick,
 }: {
@@ -898,54 +901,75 @@ function ItemAutocomplete({
   onChange: (v: string) => void;
   onPick: (item: CatalogItem) => void;
 }) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = React.useState(false);
+  const wrapRef = React.useRef<HTMLDivElement>(null);
+
   const filtered = useMemo(() => {
     const q = value.trim().toLowerCase();
     if (!q) return catalog.slice(0, 30);
-    return catalog
-      .filter((c) => c.name.toLowerCase().includes(q))
-      .slice(0, 30);
+    return catalog.filter((c) => c.name.toLowerCase().includes(q)).slice(0, 30);
   }, [catalog, value]);
 
+  // Tutup saat klik di luar
+  React.useEffect(() => {
+    if (!open) return;
+    const onDocClick = (e: MouseEvent) => {
+      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', onDocClick);
+    return () => document.removeEventListener('mousedown', onDocClick);
+  }, [open]);
+
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
+    <div ref={wrapRef} className="relative">
+      <div className="relative">
         <Input
-          className="h-9 text-sm"
+          className="h-9 text-sm pr-8"
           value={value}
-          onChange={(e) => { onChange(e.target.value); if (!open) setOpen(true); }}
-          onFocus={() => setOpen(true)}
-          placeholder="Cari atau ketik nama item"
+          onChange={(e) => onChange(e.target.value)}
+          placeholder="Ketik nama item"
         />
-      </PopoverTrigger>
-      <PopoverContent
-        className="p-0 w-[320px]"
-        align="start"
-        onOpenAutoFocus={(e) => e.preventDefault()}
-      >
-        <Command shouldFilter={false}>
-          <CommandList>
+        <button
+          type="button"
+          aria-label="Tampilkan saran katalog"
+          onClick={() => setOpen((o) => !o)}
+          className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 inline-flex items-center justify-center rounded hover:bg-muted text-muted-foreground"
+        >
+          <ChevronDown className={`w-4 h-4 transition-transform ${open ? 'rotate-180' : ''}`} />
+        </button>
+      </div>
+      {open && (
+        <div className="absolute z-50 mt-1 w-[320px] max-w-[calc(100vw-2rem)] rounded-md border bg-popover text-popover-foreground shadow-md">
+          <div className="max-h-[260px] overflow-y-auto p-1">
             {filtered.length === 0 ? (
-              <CommandEmpty>Tidak ada di katalog. Tetap bisa diketik manual.</CommandEmpty>
+              <div className="py-6 text-center text-xs text-muted-foreground">
+                Tidak ada di katalog. Tetap bisa diketik manual.
+              </div>
             ) : (
-              <CommandGroup heading="Saran dari Katalog">
+              <>
+                <div className="px-2 py-1.5 text-[10px] font-semibold uppercase text-muted-foreground">
+                  Saran dari Katalog
+                </div>
                 {filtered.map((c) => (
-                  <CommandItem
+                  <button
                     key={c.id}
-                    value={c.name}
-                    onSelect={() => { onPick(c); setOpen(false); }}
+                    type="button"
+                    onClick={() => { onPick(c); setOpen(false); }}
+                    className="w-full flex items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground text-left"
                   >
-                    <span className="font-medium">{c.name}</span>
-                    <span className="ml-auto text-xs text-muted-foreground">
+                    <span className="font-medium truncate">{c.name}</span>
+                    <span className="ml-auto text-xs text-muted-foreground whitespace-nowrap">
                       {c.unit} · Rp {Number(c.default_price).toLocaleString('id-ID')}
                     </span>
-                  </CommandItem>
+                  </button>
                 ))}
-              </CommandGroup>
+              </>
             )}
-          </CommandList>
-        </Command>
-      </PopoverContent>
-    </Popover>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
