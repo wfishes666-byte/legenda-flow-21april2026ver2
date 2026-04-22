@@ -240,6 +240,7 @@ export default function DailyRecapPage() {
           <TabsList>
             <TabsTrigger value="input">Input Laporan</TabsTrigger>
             <TabsTrigger value="recap">Rekap Laporan</TabsTrigger>
+            <TabsTrigger value="stats">Statistik</TabsTrigger>
           </TabsList>
 
           {/* INPUT TAB */}
