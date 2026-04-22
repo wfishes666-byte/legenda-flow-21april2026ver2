@@ -100,7 +100,7 @@ export default function RoleManagement() {
           </p>
         </div>
 
-        <Tabs defaultValue="users" className="space-y-4">
+        <Tabs value={mainTab} onValueChange={setMainTab} className="space-y-4">
           <TabsList>
             <TabsTrigger value="users">Role Karyawan</TabsTrigger>
             <TabsTrigger value="custom">Role Kustom</TabsTrigger>

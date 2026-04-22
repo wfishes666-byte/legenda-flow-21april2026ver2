@@ -414,7 +414,7 @@ export default function FinancialReport() {
           </div>
         </div>
 
-        <Tabs defaultValue="input" className="w-full">
+        <Tabs value={mainTab} onValueChange={setMainTab} className="w-full">
           <TabsList>
             <TabsTrigger value="input"><FileText className="w-4 h-4 sm:mr-1.5" /><span className="hidden sm:inline">Input Laporan</span><span className="sm:hidden ml-1">Input</span></TabsTrigger>
             <TabsTrigger value="log"><ListChecks className="w-4 h-4 sm:mr-1.5" /><span className="hidden sm:inline">Rekap Log</span><span className="sm:hidden ml-1">Rekap</span></TabsTrigger>

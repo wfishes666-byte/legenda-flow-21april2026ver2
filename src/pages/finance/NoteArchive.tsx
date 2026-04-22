@@ -238,7 +238,7 @@ export default function NoteArchivePage() {
           <p className="text-sm text-muted-foreground mt-1">Foto dan simpan nota pembelian harian per outlet</p>
         </div>
 
-        <Tabs defaultValue="upload" className="space-y-6">
+        <Tabs value={mainTab} onValueChange={setMainTab} className="space-y-6">
           <TabsList>
             <TabsTrigger value="upload">Upload Nota</TabsTrigger>
             <TabsTrigger value="gallery">Galeri Nota</TabsTrigger>

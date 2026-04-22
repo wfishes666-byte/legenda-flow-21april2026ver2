@@ -289,7 +289,7 @@ export default function ProfitLossPage() {
           </div>
         </div>
 
-        <Tabs defaultValue="input" className="w-full">
+        <Tabs value={mainTab} onValueChange={setMainTab} className="w-full">
           <TabsList className="grid w-full md:w-auto grid-cols-2">
             <TabsTrigger value="input">Input Akun {uncategorizedCount > 0 && `(${uncategorizedCount})`}</TabsTrigger>
             <TabsTrigger value="lr">Laporan L/R</TabsTrigger>

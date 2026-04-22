@@ -192,7 +192,7 @@ export default function AttendancePage() {
           <p className="text-muted-foreground mt-1">Input dan rekap kehadiran karyawan per outlet</p>
         </div>
 
-        <Tabs defaultValue="input" className="w-full">
+        <Tabs value={mainTab} onValueChange={setMainTab} className="w-full">
           <TabsList>
             <TabsTrigger value="input">Input Absensi</TabsTrigger>
             <TabsTrigger value="recap">Rekap Bulanan</TabsTrigger>

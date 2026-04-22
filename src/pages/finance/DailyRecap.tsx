@@ -20,6 +20,7 @@ import {
   type OutletFinanceConfig,
 } from '@/lib/financeConfig';
 import FinanceStatsRecap from '@/components/finance/FinanceStatsRecap';
+import { useTabParam } from '@/hooks/useTabParam';
 
 type PaymentType = 'cash' | 'transfer';
 
@@ -236,7 +237,7 @@ export default function DailyRecapPage() {
           </p>
         </div>
 
-        <Tabs defaultValue="input" className="w-full">
+        <Tabs value={mainTab} onValueChange={setMainTab} className="w-full">
           <TabsList>
             <TabsTrigger value="input">Input Laporan</TabsTrigger>
             <TabsTrigger value="recap">Rekap Laporan</TabsTrigger>
