@@ -899,29 +899,50 @@ function ItemAutocomplete({
   onPick: (item: CatalogItem) => void;
 }) {
   const [open, setOpen] = useState(false);
+  const filtered = useMemo(() => {
+    const q = value.trim().toLowerCase();
+    if (!q) return catalog.slice(0, 30);
+    return catalog
+      .filter((c) => c.name.toLowerCase().includes(q))
+      .slice(0, 30);
+  }, [catalog, value]);
+
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <Input
+          className="h-9 text-sm"
           value={value}
           onChange={(e) => { onChange(e.target.value); if (!open) setOpen(true); }}
           onFocus={() => setOpen(true)}
           placeholder="Cari atau ketik nama item"
         />
       </PopoverTrigger>
-      <PopoverContent className="p-0 w-[280px]" align="start" onOpenAutoFocus={(e) => e.preventDefault()}>
-        <Command>
-          <CommandInput placeholder="Cari item..." value={value} onValueChange={onChange} />
+      <PopoverContent
+        className="p-0 w-[320px]"
+        align="start"
+        onOpenAutoFocus={(e) => e.preventDefault()}
+      >
+        <Command shouldFilter={false}>
           <CommandList>
-            <CommandEmpty>Tidak ada di katalog. Tetap bisa diketik manual.</CommandEmpty>
-            <CommandGroup>
-              {catalog.map((c) => (
-                <CommandItem key={c.id} value={c.name} onSelect={() => { onPick(c); setOpen(false); }}>
-                  <span className="font-medium">{c.name}</span>
-                  <span className="ml-auto text-xs text-muted-foreground">{c.unit} · Rp {Number(c.default_price).toLocaleString('id-ID')}</span>
-                </CommandItem>
-              ))}
-            </CommandGroup>
+            {filtered.length === 0 ? (
+              <CommandEmpty>Tidak ada di katalog. Tetap bisa diketik manual.</CommandEmpty>
+            ) : (
+              <CommandGroup heading="Saran dari Katalog">
+                {filtered.map((c) => (
+                  <CommandItem
+                    key={c.id}
+                    value={c.name}
+                    onSelect={() => { onPick(c); setOpen(false); }}
+                  >
+                    <span className="font-medium">{c.name}</span>
+                    <span className="ml-auto text-xs text-muted-foreground">
+                      {c.unit} · Rp {Number(c.default_price).toLocaleString('id-ID')}
+                    </span>
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            )}
           </CommandList>
         </Command>
       </PopoverContent>
