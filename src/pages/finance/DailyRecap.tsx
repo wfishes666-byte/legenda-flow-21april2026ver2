@@ -19,6 +19,7 @@ import {
   evalSelisih,
   type OutletFinanceConfig,
 } from '@/lib/financeConfig';
+import FinanceStatsRecap from '@/components/finance/FinanceStatsRecap';
 
 type PaymentType = 'cash' | 'transfer';
 
