@@ -7,12 +7,24 @@ import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
-import { CalendarCheck, ChevronLeft, ChevronRight, Save, MapPin, Plus, Crosshair } from 'lucide-react';
+import { CalendarCheck, ChevronLeft, ChevronRight, Save, MapPin, Plus, Crosshair, Trash2, AlertTriangle } from 'lucide-react';
 import { useOutlets } from '@/hooks/useOutlets';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth, AppRole } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
 import { format, parseISO } from 'date-fns';
 import { id as idLocale } from 'date-fns/locale';
+import { ExportButtons } from '@/components/ExportButtons';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 
 type StatusCode = 'H' | 'I' | 'S' | 'C' | 'L' | 'T';
 
@@ -357,7 +369,7 @@ export default function AttendancePage() {
           </TabsContent>
 
           <TabsContent value="recap">
-            <RecapTab outletId={selectedOutlet} profiles={outletProfiles} />
+            <RecapTab outletId={selectedOutlet} profiles={outletProfiles} role={role} />
           </TabsContent>
 
           <TabsContent value="logs">
@@ -375,14 +387,19 @@ export default function AttendancePage() {
   );
 }
 
-function RecapTab({ outletId, profiles }: { outletId: string; profiles: Profile[] }) {
+function RecapTab({ outletId, profiles, role }: { outletId: string; profiles: Profile[]; role: AppRole | null }) {
+  const { toast } = useToast();
+  const isAdmin = role === 'admin';
   const now = new Date();
   const [month, setMonth] = useState(now.getMonth() + 1);
   const [year, setYear] = useState(now.getFullYear());
   const [records, setRecords] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [deletingDuplicates, setDeletingDuplicates] = useState(false);
 
-  useEffect(() => {
+  const reload = () => {
     if (!outletId || profiles.length === 0) { setRecords([]); return; }
+    setLoading(true);
     const start = `${year}-${String(month).padStart(2, '0')}-01`;
     const endDate = new Date(year, month, 0).getDate();
     const end = `${year}-${String(month).padStart(2, '0')}-${String(endDate).padStart(2, '0')}`;
@@ -392,8 +409,29 @@ function RecapTab({ outletId, profiles }: { outletId: string; profiles: Profile[
       .gte('attendance_date', start)
       .lte('attendance_date', end)
       .in('user_id', profiles.map((p) => p.user_id))
-      .then(({ data }) => setRecords(data || []));
-  }, [outletId, month, year, profiles]);
+      .order('attendance_date', { ascending: false })
+      .then(({ data }) => {
+        setRecords(data || []);
+        setLoading(false);
+      });
+  };
+
+  useEffect(() => { reload(); }, [outletId, month, year, profiles]);
+
+  // Deteksi duplikat: sama user_id + attendance_date
+  const duplicateGroups = useMemo(() => {
+    const groups = new Map<string, any[]>();
+    records.forEach((r) => {
+      const key = `${r.user_id}__${r.attendance_date}`;
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key)!.push(r);
+    });
+    return Array.from(groups.values()).filter((g) => g.length > 1);
+  }, [records]);
+
+  const duplicateCount = duplicateGroups.reduce((s, g) => s + (g.length - 1), 0);
+
+  const profileMap = useMemo(() => new Map(profiles.map((p) => [p.user_id, p])), [profiles]);
 
   const summary = profiles.map((p) => {
     const recs = records.filter((r) => r.user_id === p.user_id);
@@ -408,16 +446,105 @@ function RecapTab({ outletId, profiles }: { outletId: string; profiles: Profile[
     };
   });
 
+  const periodLabel = format(new Date(year, month - 1, 1), 'MMMM yyyy', { locale: idLocale });
+
+  const deleteOne = async (id: string) => {
+    const { error } = await supabase.from('attendance').delete().eq('id', id);
+    if (error) {
+      toast({ title: 'Gagal menghapus', description: error.message, variant: 'destructive' });
+      return;
+    }
+    toast({ title: 'Data absen dihapus' });
+    reload();
+  };
+
+  const cleanupDuplicates = async () => {
+    // Untuk tiap grup duplikat, simpan record paling baru (created_at terbesar) dan hapus sisanya
+    const toDelete: string[] = [];
+    duplicateGroups.forEach((group) => {
+      const sorted = [...group].sort(
+        (a, b) => new Date(b.created_at || b.updated_at || 0).getTime() - new Date(a.created_at || a.updated_at || 0).getTime()
+      );
+      sorted.slice(1).forEach((r) => toDelete.push(r.id));
+    });
+    if (toDelete.length === 0) {
+      toast({ title: 'Tidak ada duplikat' });
+      return;
+    }
+    setDeletingDuplicates(true);
+    const { error } = await supabase.from('attendance').delete().in('id', toDelete);
+    setDeletingDuplicates(false);
+    if (error) {
+      toast({ title: 'Gagal membersihkan duplikat', description: error.message, variant: 'destructive' });
+      return;
+    }
+    toast({ title: 'Duplikat dibersihkan', description: `${toDelete.length} entri dihapus.` });
+    reload();
+  };
+
   return (
     <Card className="glass-card">
       <CardContent className="p-4 space-y-4">
-        <div className="flex gap-2 items-center">
-          <Input type="number" min={1} max={12} value={month} onChange={(e) => setMonth(parseInt(e.target.value) || 1)} className="w-20" />
-          <Input type="number" value={year} onChange={(e) => setYear(parseInt(e.target.value) || year)} className="w-28" />
-          <span className="text-sm text-muted-foreground">
-            {format(new Date(year, month - 1, 1), 'MMMM yyyy', { locale: idLocale })}
-          </span>
+        <div className="flex flex-wrap gap-2 items-center justify-between">
+          <div className="flex gap-2 items-center">
+            <Input type="number" min={1} max={12} value={month} onChange={(e) => setMonth(parseInt(e.target.value) || 1)} className="w-20" />
+            <Input type="number" value={year} onChange={(e) => setYear(parseInt(e.target.value) || year)} className="w-28" />
+            <span className="text-sm text-muted-foreground">{periodLabel}</span>
+          </div>
+          <div className="flex gap-2 items-center flex-wrap">
+            <ExportButtons
+              filename={`rekap-absensi-${year}-${String(month).padStart(2, '0')}`}
+              title={`Rekap Absensi ${periodLabel}`}
+              subtitle={`Total karyawan: ${profiles.length}`}
+              orientation="landscape"
+              columns={[
+                { header: 'Nama', accessor: 'name' },
+                { header: 'Hadir', accessor: 'H' },
+                { header: 'Izin', accessor: 'I' },
+                { header: 'Sakit', accessor: 'S' },
+                { header: 'Cuti', accessor: 'C' },
+                { header: 'Libur', accessor: 'L' },
+                { header: 'Tanpa Ket.', accessor: 'T' },
+                { header: 'Total Terlambat (mnt)', accessor: 'late' },
+                { header: 'Total Kasbon (Rp)', accessor: (r) => Number(r.cashbon).toLocaleString('id-ID') },
+              ]}
+              rows={summary}
+            />
+          </div>
         </div>
+
+        {isAdmin && duplicateCount > 0 && (
+          <div className="flex flex-wrap items-center gap-3 p-3 rounded-lg border border-destructive/40 bg-destructive/10">
+            <AlertTriangle className="w-5 h-5 text-destructive shrink-0" />
+            <div className="flex-1 min-w-[220px]">
+              <p className="text-sm font-medium">Terdeteksi {duplicateCount} entri absen duplikat</p>
+              <p className="text-xs text-muted-foreground">
+                Beberapa karyawan memiliki lebih dari satu absen pada tanggal yang sama. Pembersihan akan menyimpan entri terbaru dan menghapus sisanya.
+              </p>
+            </div>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="destructive" size="sm" disabled={deletingDuplicates}>
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  {deletingDuplicates ? 'Membersihkan...' : 'Bersihkan Duplikat'}
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Bersihkan absen duplikat?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Sistem akan menghapus {duplicateCount} entri lama dan menyimpan entri terbaru per karyawan-tanggal. Tindakan ini tidak dapat dibatalkan.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Batal</AlertDialogCancel>
+                  <AlertDialogAction onClick={cleanupDuplicates}>Hapus Duplikat</AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </div>
+        )}
+
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
@@ -445,11 +572,74 @@ function RecapTab({ outletId, profiles }: { outletId: string; profiles: Profile[
                 </tr>
               ))}
               {summary.length === 0 && (
-                <tr><td colSpan={9} className="p-8 text-center text-muted-foreground">Belum ada data.</td></tr>
+                <tr><td colSpan={9} className="p-8 text-center text-muted-foreground">{loading ? 'Memuat...' : 'Belum ada data.'}</td></tr>
               )}
             </tbody>
           </table>
         </div>
+
+        {isAdmin && records.length > 0 && (
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <h4 className="text-sm font-semibold">Detail Entri Absen ({records.length})</h4>
+              <span className="text-xs text-muted-foreground">Admin dapat menghapus entri individual untuk mitigasi data bertumpuk.</span>
+            </div>
+            <div className="overflow-x-auto rounded-lg border border-border">
+              <table className="w-full text-sm">
+                <thead className="bg-muted/40">
+                  <tr className="text-left text-xs uppercase text-muted-foreground">
+                    <th className="p-3">Tanggal</th>
+                    <th className="p-3">Karyawan</th>
+                    <th className="p-3">Status</th>
+                    <th className="p-3 text-right">Terlambat</th>
+                    <th className="p-3 text-right">Kasbon</th>
+                    <th className="p-3 text-right">Aksi</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {records.map((r) => {
+                    const prof = profileMap.get(r.user_id);
+                    const dupKey = `${r.user_id}__${r.attendance_date}`;
+                    const isDup = duplicateGroups.some((g) => g[0] && `${g[0].user_id}__${g[0].attendance_date}` === dupKey);
+                    return (
+                      <tr key={r.id} className={cn('border-t border-border/50 hover:bg-muted/20', isDup && 'bg-destructive/5')}>
+                        <td className="p-3 font-mono text-xs">{r.attendance_date}</td>
+                        <td className="p-3">
+                          <div className="font-medium">{prof?.full_name || '—'}</div>
+                          {isDup && <span className="text-[10px] uppercase font-bold text-destructive">Duplikat</span>}
+                        </td>
+                        <td className="p-3"><span className="text-xs font-bold">{DB_TO_CODE[r.status] || r.status}</span></td>
+                        <td className="p-3 text-right">{r.late_minutes || 0} mnt</td>
+                        <td className="p-3 text-right">Rp {Number(r.cashbon_amount || 0).toLocaleString('id-ID')}</td>
+                        <td className="p-3 text-right">
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive">
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Hapus entri absen?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  {prof?.full_name} · {r.attendance_date} · {DB_TO_CODE[r.status] || r.status}. Tindakan ini tidak dapat dibatalkan.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Batal</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => deleteOne(r.id)}>Hapus</AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
       </CardContent>
     </Card>
   );
