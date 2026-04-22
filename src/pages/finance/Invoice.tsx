@@ -886,10 +886,10 @@ export default function InvoicePage() {
 }
 
 // ============ Sub-component: autocomplete ============
-// Popover saran katalog. Tidak menutup tiba-tiba karena:
-//  - onOpenAutoFocus & onCloseAutoFocus dicegah → focus tetap di input.
-//  - onInteractOutside mengabaikan klik kembali ke input itu sendiri.
-//  - Input dibungkus div sebagai PopoverTrigger agar Radix tidak merebut focus input.
+// Dropdown manual agar perilakunya stabil:
+// - 1x klik/focus input langsung membuka saran
+// - tetap terbuka saat mengetik atau klik ulang pada field
+// - hanya tertutup saat klik di luar area field/dropdown atau setelah memilih item
 function ItemAutocomplete({
   value, catalog, onChange, onPick,
 }: {
@@ -899,7 +899,7 @@ function ItemAutocomplete({
   onPick: (item: CatalogItem) => void;
 }) {
   const [open, setOpen] = useState(false);
-  const inputRef = React.useRef<HTMLInputElement>(null);
+  const rootRef = React.useRef<HTMLDivElement>(null);
 
   const filtered = useMemo(() => {
     const q = value.trim().toLowerCase();
@@ -907,55 +907,70 @@ function ItemAutocomplete({
     return catalog.filter((c) => c.name.toLowerCase().includes(q)).slice(0, 30);
   }, [catalog, value]);
 
+  useEffect(() => {
+    if (!open) return;
+
+    const handlePointerDown = (event: MouseEvent | TouchEvent) => {
+      if (!rootRef.current?.contains(event.target as Node)) {
+        setOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handlePointerDown);
+    document.addEventListener('touchstart', handlePointerDown);
+    return () => {
+      document.removeEventListener('mousedown', handlePointerDown);
+      document.removeEventListener('touchstart', handlePointerDown);
+    };
+  }, [open]);
+
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <div className="w-full">
-          <Input
-            ref={inputRef}
-            className="h-9 text-sm"
-            value={value}
-            onChange={(e) => { onChange(e.target.value); if (!open) setOpen(true); }}
-            onFocus={() => setOpen(true)}
-            placeholder="Cari atau ketik nama item"
-          />
-        </div>
-      </PopoverTrigger>
-      <PopoverContent
-        className="p-0 w-[320px]"
-        align="start"
-        sideOffset={4}
-        onOpenAutoFocus={(e) => e.preventDefault()}
-        onCloseAutoFocus={(e) => e.preventDefault()}
-        onInteractOutside={(e) => {
-          if (inputRef.current && inputRef.current.contains(e.target as Node)) {
-            e.preventDefault();
-          }
+    <div ref={rootRef} className="relative">
+      <Input
+        className="h-9 text-sm"
+        value={value}
+        onChange={(e) => {
+          onChange(e.target.value);
+          if (!open) setOpen(true);
         }}
-      >
-        <Command shouldFilter={false}>
-          <CommandList>
+        onFocus={() => setOpen(true)}
+        onClick={() => setOpen(true)}
+        placeholder="Cari atau ketik nama item"
+      />
+
+      {open && (
+        <div className="absolute left-0 top-full z-50 mt-1 w-[320px] max-w-[min(320px,calc(100vw-3rem))] rounded-md border bg-popover text-popover-foreground shadow-md outline-none">
+          <div className="max-h-[300px] overflow-y-auto p-1">
             {filtered.length === 0 ? (
-              <CommandEmpty>Tidak ada di katalog. Tetap bisa diketik manual.</CommandEmpty>
+              <div className="py-6 text-center text-sm text-muted-foreground">
+                Tidak ada di katalog. Tetap bisa diketik manual.
+              </div>
             ) : (
-              <CommandGroup heading="Saran dari Katalog">
+              <div className="overflow-hidden p-1 text-foreground">
+                <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground">
+                  Saran dari Katalog
+                </div>
                 {filtered.map((c) => (
-                  <CommandItem
+                  <button
                     key={c.id}
-                    value={c.name}
-                    onSelect={() => { onPick(c); setOpen(false); }}
+                    type="button"
+                    className="relative flex w-full cursor-default select-none items-center rounded-sm px-2 py-2 text-sm outline-none hover:bg-accent hover:text-accent-foreground"
+                    onClick={() => {
+                      onPick(c);
+                      setOpen(false);
+                    }}
                   >
                     <span className="font-medium">{c.name}</span>
                     <span className="ml-auto text-xs text-muted-foreground">
                       {c.unit} · Rp {Number(c.default_price).toLocaleString('id-ID')}
                     </span>
-                  </CommandItem>
+                  </button>
                 ))}
-              </CommandGroup>
+              </div>
             )}
-          </CommandList>
-        </Command>
-      </PopoverContent>
-    </Popover>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
