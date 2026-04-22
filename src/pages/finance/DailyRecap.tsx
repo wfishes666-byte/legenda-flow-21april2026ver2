@@ -632,6 +632,11 @@ export default function DailyRecapPage() {
               </CardContent>
             </Card>
           </TabsContent>
+
+          {/* STATS TAB */}
+          <TabsContent value="stats" className="mt-4">
+            <FinanceStatsRecap />
+          </TabsContent>
         </Tabs>
       </div>
     </AppLayout>
