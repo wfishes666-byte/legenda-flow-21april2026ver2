@@ -3,6 +3,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import AppLayout from '@/components/AppLayout';
 import { useOutlets } from '@/hooks/useOutlets';
+import { useTabParam } from '@/hooks/useTabParam';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { CollapsibleSection } from '@/components/CollapsibleSection';
 import { Button } from '@/components/ui/button';

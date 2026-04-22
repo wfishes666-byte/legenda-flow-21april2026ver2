@@ -10,6 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 import { CalendarCheck, ChevronLeft, ChevronRight, Save, MapPin, Plus, Crosshair, Trash2, AlertTriangle } from 'lucide-react';
 import { useOutlets } from '@/hooks/useOutlets';
 import { useAuth, AppRole } from '@/hooks/useAuth';
+import { useTabParam } from '@/hooks/useTabParam';
 import { cn } from '@/lib/utils';
 import { format, parseISO } from 'date-fns';
 import { id as idLocale } from 'date-fns/locale';

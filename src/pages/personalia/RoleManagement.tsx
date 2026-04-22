@@ -11,6 +11,7 @@ import { AppRole, useAuth } from '@/hooks/useAuth';
 import { useMenuPermissions } from '@/hooks/useMenuPermissions';
 import CustomRolesTab from '@/components/role-mgmt/CustomRolesTab';
 import MenuPermissionsTab from '@/components/role-mgmt/MenuPermissionsTab';
+import { useTabParam } from '@/hooks/useTabParam';
 
 interface UserWithRole {
   user_id: string;
