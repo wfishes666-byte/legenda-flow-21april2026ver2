@@ -24,6 +24,7 @@ import { ExportButtons } from '@/components/ExportButtons';
 import { formatRpExport } from '@/lib/exportUtils';
 import { MoneyInput } from '@/components/MoneyInput';
 import { exportInvoicePDF } from '@/lib/invoicePdf';
+import { usePersistentDraft } from '@/hooks/usePersistentDraft';
 import { Printer } from 'lucide-react';
 
 interface CatalogItem {
@@ -60,6 +61,12 @@ const formatRp = (v: number) => `Rp ${(v || 0).toLocaleString('id-ID')}`;
 const newLine = (): DraftLine => ({
   id: crypto.randomUUID(), item_name: '', unit: 'kg', qty: 0, unit_price: 0,
 });
+const createInvoiceDraft = () => ({
+  outletId: '',
+  invDate: format(new Date(), 'yyyy-MM-dd'),
+  lines: [newLine()],
+  recipient: '',
+});
 
 export default function InvoicePage() {
   const { toast } = useToast();
@@ -69,9 +76,10 @@ export default function InvoicePage() {
   const [tab, setTab] = useState('generate');
 
   // Generate
-  const [outletId, setOutletId] = useState<string>('');
-  const [invDate, setInvDate] = useState(format(new Date(), 'yyyy-MM-dd'));
-  const [lines, setLines] = useState<DraftLine[]>([newLine()]);
+  const invoiceDraft = usePersistentDraft('draft:invoice-generate-v1', createInvoiceDraft());
+  const [outletId, setOutletId] = useState<string>(invoiceDraft.value.outletId);
+  const [invDate, setInvDate] = useState(invoiceDraft.value.invDate);
+  const [lines, setLines] = useState<DraftLine[]>(invoiceDraft.value.lines.length ? invoiceDraft.value.lines : [newLine()]);
   const [saving, setSaving] = useState(false);
 
   // Rekap
@@ -82,7 +90,7 @@ export default function InvoicePage() {
   const [expandedInv, setExpandedInv] = useState<string | null>(null);
   // Ringkasan still uses month filter
   const [filterMonth, setFilterMonth] = useState(format(new Date(), 'yyyy-MM'));
-  const [recipient, setRecipient] = useState('');
+  const [recipient, setRecipient] = useState(invoiceDraft.value.recipient);
 
   // Katalog
   const [catName, setCatName] = useState('');
@@ -123,6 +131,9 @@ export default function InvoicePage() {
   useEffect(() => { fetchCatalog(); }, []);
   useEffect(() => { if (outlets.length && !outletId) setOutletId(outlets[0].id); }, [outlets, outletId]);
   useEffect(() => { fetchInvoices(); }, [filterOutlet, outlets]);
+  useEffect(() => {
+    invoiceDraft.setValue({ outletId, invDate, lines, recipient });
+  }, [invoiceDraft, invDate, lines, outletId, recipient]);
 
   // ====== Generate handlers ======
   const updateLine = (id: string, patch: Partial<DraftLine>) =>
@@ -200,6 +211,9 @@ export default function InvoicePage() {
       const { error: ie } = await supabase.from('invoice_items').insert(itemsPayload);
       if (ie) throw ie;
       toast({ title: `Invoice ${invoiceNumber} dibuat`, description: `${valid.length} item, total ${formatRp(total)}` });
+      invoiceDraft.clear(createInvoiceDraft());
+      setOutletId(outletId);
+      setInvDate(format(new Date(), 'yyyy-MM-dd'));
       setLines([newLine()]);
       setRecipient('');
       fetchInvoices();
