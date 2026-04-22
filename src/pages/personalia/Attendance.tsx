@@ -373,7 +373,7 @@ export default function AttendancePage() {
           </TabsContent>
 
           <TabsContent value="logs">
-            <SelfieLogsTab outlets={outlets} allProfiles={profiles} />
+            <SelfieLogsTab outlets={outlets} allProfiles={profiles} role={role} />
           </TabsContent>
 
           {canManageOutlets && (
@@ -645,18 +645,21 @@ function RecapTab({ outletId, profiles, role }: { outletId: string; profiles: Pr
   );
 }
 
-function SelfieLogsTab({ outlets, allProfiles }: { outlets: { id: string; name: string }[]; allProfiles: Profile[] }) {
+function SelfieLogsTab({ outlets, allProfiles, role }: { outlets: { id: string; name: string }[]; allProfiles: Profile[]; role: AppRole | null }) {
+  const { toast } = useToast();
+  const isAdmin = role === 'admin';
   const [logs, setLogs] = useState<any[]>([]);
   const [date, setDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [userFilter, setUserFilter] = useState<string>('all');
   const [outletFilter, setOutletFilter] = useState<string>('all');
+  const [bulkDeleting, setBulkDeleting] = useState(false);
 
   const visibleProfiles = useMemo(
     () => outletFilter === 'all' ? allProfiles : allProfiles.filter((p) => p.outlet_id === outletFilter),
     [allProfiles, outletFilter]
   );
 
-  useEffect(() => {
+  const reload = () => {
     if (visibleProfiles.length === 0) { setLogs([]); return; }
     const userIds = visibleProfiles.map((p) => p.user_id);
     const start = `${date}T00:00:00`;
@@ -669,12 +672,56 @@ function SelfieLogsTab({ outlets, allProfiles }: { outlets: { id: string; name: 
       .in('user_id', userIds)
       .order('created_at', { ascending: false })
       .then(({ data }) => setLogs(data || []));
-  }, [date, visibleProfiles]);
+  };
+
+  useEffect(() => { reload(); }, [date, visibleProfiles]);
 
   useEffect(() => { setUserFilter('all'); }, [outletFilter]);
 
-  const profileMap = new Map(allProfiles.map((p) => [p.user_id, p]));
+  const profileMap = useMemo(() => new Map(allProfiles.map((p) => [p.user_id, p])), [allProfiles]);
+  const outletMap = useMemo(() => new Map(outlets.map((o) => [o.id, o.name])), [outlets]);
   const filtered = userFilter === 'all' ? logs : logs.filter((l) => l.user_id === userFilter);
+
+  const exportRows = filtered.map((log) => {
+    const prof = profileMap.get(log.user_id);
+    return {
+      tanggal: format(new Date(log.created_at), 'yyyy-MM-dd'),
+      waktu: format(new Date(log.created_at), 'HH:mm:ss'),
+      karyawan: prof?.full_name || '-',
+      outlet: outletMap.get(log.outlet_id || '') || '-',
+      tipe: log.log_type === 'check_in' ? 'Check In' : 'Check Out',
+      latitude: Number(log.latitude).toFixed(6),
+      longitude: Number(log.longitude).toFixed(6),
+      jarak_meter: log.distance_from_outlet_meters != null ? Math.round(log.distance_from_outlet_meters) : '',
+      status_radius: log.out_of_radius ? 'Luar radius' : 'Dalam radius',
+      foto_url: log.selfie_url || '',
+      catatan: log.notes || '',
+    };
+  });
+
+  const deleteOne = async (id: string) => {
+    const { error } = await supabase.from('attendance_logs').delete().eq('id', id);
+    if (error) {
+      toast({ title: 'Gagal menghapus log', description: error.message, variant: 'destructive' });
+      return;
+    }
+    toast({ title: 'Log dihapus' });
+    reload();
+  };
+
+  const deleteAllVisible = async () => {
+    if (filtered.length === 0) return;
+    setBulkDeleting(true);
+    const ids = filtered.map((l) => l.id);
+    const { error } = await supabase.from('attendance_logs').delete().in('id', ids);
+    setBulkDeleting(false);
+    if (error) {
+      toast({ title: 'Gagal menghapus log', description: error.message, variant: 'destructive' });
+      return;
+    }
+    toast({ title: 'Log dihapus', description: `${ids.length} log dihapus.` });
+    reload();
+  };
 
   return (
     <Card className="glass-card">
@@ -709,7 +756,51 @@ function SelfieLogsTab({ outlets, allProfiles }: { outlets: { id: string; name: 
             <option value="all">Semua karyawan</option>
             {visibleProfiles.map((p) => <option key={p.user_id} value={p.user_id}>{p.full_name}</option>)}
           </select>
-          <span className="text-sm text-muted-foreground ml-auto">{filtered.length} log</span>
+          <span className="text-sm text-muted-foreground">{filtered.length} log</span>
+          <div className="ml-auto flex items-center gap-2 flex-wrap">
+            <ExportButtons
+              filename={`log-absen-selfie-${date}`}
+              title={`Log Absen Selfie ${date}`}
+              subtitle={outletFilter === 'all' ? 'Semua outlet' : (outletMap.get(outletFilter) || '-')}
+              orientation="landscape"
+              columns={[
+                { header: 'Tanggal', accessor: 'tanggal' },
+                { header: 'Waktu', accessor: 'waktu' },
+                { header: 'Karyawan', accessor: 'karyawan' },
+                { header: 'Outlet', accessor: 'outlet' },
+                { header: 'Tipe', accessor: 'tipe' },
+                { header: 'Latitude', accessor: 'latitude' },
+                { header: 'Longitude', accessor: 'longitude' },
+                { header: 'Jarak (m)', accessor: 'jarak_meter' },
+                { header: 'Status Radius', accessor: 'status_radius' },
+                { header: 'Foto URL', accessor: 'foto_url' },
+                { header: 'Catatan', accessor: 'catatan' },
+              ]}
+              rows={exportRows}
+            />
+            {isAdmin && filtered.length > 0 && (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="destructive" size="sm" disabled={bulkDeleting}>
+                    <Trash2 className="w-4 h-4 mr-1" />
+                    {bulkDeleting ? 'Menghapus...' : `Hapus Semua (${filtered.length})`}
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Hapus semua log selfie yang ditampilkan?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      {filtered.length} log absen selfie pada filter saat ini akan dihapus permanen. Tindakan ini tidak dapat dibatalkan.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Batal</AlertDialogCancel>
+                    <AlertDialogAction onClick={deleteAllVisible}>Hapus Semua</AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            )}
+          </div>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -722,6 +813,7 @@ function SelfieLogsTab({ outlets, allProfiles }: { outlets: { id: string; name: 
                 <th className="p-3">Lokasi</th>
                 <th className="p-3">Status</th>
                 <th className="p-3">Catatan</th>
+                {isAdmin && <th className="p-3 text-right">Aksi</th>}
               </tr>
             </thead>
             <tbody>
@@ -761,11 +853,34 @@ function SelfieLogsTab({ outlets, allProfiles }: { outlets: { id: string; name: 
                       )}
                     </td>
                     <td className="p-3 text-xs text-muted-foreground max-w-[200px] truncate">{log.notes || '-'}</td>
+                    {isAdmin && (
+                      <td className="p-3 text-right">
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive">
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Hapus log absen selfie?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                {prof?.full_name || '—'} · {format(new Date(log.created_at), 'dd MMM yyyy HH:mm:ss')} · {log.log_type === 'check_in' ? 'Check In' : 'Check Out'}. Tindakan ini tidak dapat dibatalkan.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Batal</AlertDialogCancel>
+                              <AlertDialogAction onClick={() => deleteOne(log.id)}>Hapus</AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </td>
+                    )}
                   </tr>
                 );
               })}
               {filtered.length === 0 && (
-                <tr><td colSpan={7} className="p-8 text-center text-muted-foreground">Belum ada log absen selfie pada tanggal ini.</td></tr>
+                <tr><td colSpan={isAdmin ? 8 : 7} className="p-8 text-center text-muted-foreground">Belum ada log absen selfie pada tanggal ini.</td></tr>
               )}
             </tbody>
           </table>
