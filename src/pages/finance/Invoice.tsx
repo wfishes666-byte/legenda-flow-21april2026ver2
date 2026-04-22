@@ -585,6 +585,24 @@ export default function InvoicePage() {
                                         <Button
                                           size="sm"
                                           variant="outline"
+                                          className="h-7 text-[11px] px-2"
+                                          onClick={() => exportInvoicePDF({
+                                            invoice_number: inv.invoice_number,
+                                            invoice_date: inv.invoice_date,
+                                            outlet_name: inv.outlet_name,
+                                            recipient: inv.recipient,
+                                            status: inv.status,
+                                            total: Number(inv.total),
+                                            notes: inv.notes,
+                                            items: inv.items || [],
+                                          })}
+                                          title="Cetak PDF"
+                                        >
+                                          <Printer className="w-3 h-3 mr-1" /> PDF
+                                        </Button>
+                                        <Button
+                                          size="sm"
+                                          variant="outline"
                                           className="h-7 text-[11px] px-2 border-green-600/40 text-green-700 dark:text-green-400 hover:bg-green-500/10"
                                           onClick={() => togglePaid(inv)}
                                         >
