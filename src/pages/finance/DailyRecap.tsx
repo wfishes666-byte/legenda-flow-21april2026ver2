@@ -57,7 +57,6 @@ export default function DailyRecapPage() {
   const { user, role } = useAuth();
   const { toast } = useToast();
   const { outlets, loading: outletsLoading } = useOutlets();
-  const [activeOutlet, setActiveOutlet] = useState<string>(dailyDraft.value.activeOutlet);
   const [mainTab, setMainTab] = useTabParam('input');
   const [submitting, setSubmitting] = useState(false);
   const [reports, setReports] = useState<any[]>([]);
@@ -67,6 +66,7 @@ export default function DailyRecapPage() {
 
   // form state
   const dailyDraft = usePersistentDraft('draft:daily-recap-v1', createDailyRecapDraft());
+  const [activeOutlet, setActiveOutlet] = useState<string>(dailyDraft.value.activeOutlet);
   const [reportDate, setReportDate] = useState(dailyDraft.value.reportDate);
   const [reporterName, setReporterName] = useState(dailyDraft.value.reporterName);
   const [incomeValues, setIncomeValues] = useState<Record<string, number>>(dailyDraft.value.incomeValues);
